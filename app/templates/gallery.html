@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}Melomano — Coleccion{% endblock %}
+
+{% block content %}
+<div class="flex items-start justify-between mb-8 gap-4 flex-wrap">
+    <div>
+        <h1 class="font-serif text-3xl font-700 text-ink-800 tracking-tight">Mi Coleccion</h1>
+        <p class="text-ink-400 text-sm mt-1">{{ total }} discos registrados</p>
+    </div>
+    <div class="flex items-center gap-2 flex-wrap">
+        {% if user %}
+        <!-- Busqueda Discogs -->
+        <button onclick="document.getElementById('addModal').classList.remove('hidden')"
+            class="px-4 py-2 rounded-xl text-sm font-500 bg-ink-800 text-cream-50 hover:bg-ink-700 transition-all">
+            + Agregar disco
+        </button>
+        <form action="/sync/discogs" method="POST">
+            <button type="submit" class="px-4 py-2 rounded-xl text-sm font-500 border border-cream-300 text-ink-600 hover:bg-cream-200 transition-all">
+                ↻ Sync Discogs
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Filtros y busqueda -->
+<div class="flex items-center gap-3 mb-6 flex-wrap">
+    <form action="/" method="GET" class="flex gap-2 flex-1 min-w-[200px]">
+        <input type="text" name="q" value="{{ q }}" placeholder="Buscar artista o album..."
+            class="flex-1 bg-white border border-cream-200 rounded-xl px-4 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400 transition-all" />
+        <input type="hidden" name="filter" value="{{ filter }}" />
+        <button type="submit" class="px-4 py-2 bg-ink-800 text-cream-50 rounded-xl text-sm hover:bg-ink-700 transition-all">Buscar</button>
+    </form>
+    <div class="flex gap-1">
+        {% for f, label in [('all','Todos'),('owned','Coleccion'),('listened','Escuchados'),('wishlist','Wishlist')] %}
+        <a href="/?filter={{ f }}{% if q %}&q={{ q }}{% endif %}"
+            class="px-3 py-1.5 rounded-full text-xs font-500 transition-all
+            {% if filter == f %}bg-ink-800 text-cream-50{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200 border border-cream-200{% endif %}">
+            {{ label }}
+        </a>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Grilla de albums -->
+{% if albums %}
+<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+    {% for album in albums %}
+    <a href="/album/{{ album.id }}" class="group block">
+        <div class="relative aspect-square rounded-xl overflow-hidden bg-cream-200 mb-2 shadow-sm group-hover:shadow-md transition-all group-hover:scale-[1.02]">
+            {% if album.cover_url %}
+            <img src="{{ album.cover_url }}" alt="{{ album.title }}" class="w-full h-full object-cover" loading="lazy"
+                onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />
+            <div class="hidden w-full h-full items-center justify-center text-4xl">🎵</div>
+            {% else %}
+            <div class="w-full h-full flex items-center justify-center text-4xl">🎵</div>
+            {% endif %}
+
+            <!-- Badges -->
+            <div class="absolute top-2 right-2 flex flex-col gap-1">
+                {% if album.owned %}<span class="text-xs bg-black/50 text-white px-1.5 py-0.5 rounded-full">💿</span>{% endif %}
+                {% if album.wishlist %}<span class="text-xs bg-black/50 text-white px-1.5 py-0.5 rounded-full">🔖</span>{% endif %}
+            </div>
+
+            <!-- Score overlay -->
+            {% if album.score %}
+            <div class="absolute bottom-2 left-2 bg-black/60 text-white text-xs font-700 px-2 py-0.5 rounded-full font-serif">
+                {{ album.score }}/10
+            </div>
+            {% endif %}
+        </div>
+        <div class="px-0.5">
+            <p class="text-xs font-600 text-ink-700 truncate leading-tight">{{ album.title }}</p>
+            <p class="text-xs text-ink-400 truncate">{{ album.artist }}</p>
+            {% if album.year %}<p class="text-xs text-ink-300">{{ album.year }}</p>{% endif %}
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-20">
+    <div class="text-6xl mb-4">🎵</div>
+    <p class="font-serif text-lg text-ink-500">Coleccion vacia.</p>
+    {% if user %}
+    <p class="text-sm text-ink-300 mt-2">Sincroniza tu Discogs o agrega un disco manualmente.</p>
+    {% else %}
+    <p class="text-sm text-ink-300 mt-2"><a href="/login" class="underline">Ingresa</a> para sincronizar tu coleccion.</p>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Modal agregar disco -->
+{% if user %}
+<div id="addModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+    <div class="bg-cream-50 rounded-2xl p-6 w-full max-w-lg shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="font-serif text-lg font-600 text-ink-800">Agregar disco</h2>
+            <button onclick="document.getElementById('addModal').classList.add('hidden')" class="text-ink-300 hover:text-ink-600 text-xl">&times;</button>
+        </div>
+
+        <!-- Busqueda Discogs -->
+        <div class="mb-4">
+            <label class="block text-xs uppercase tracking-widest text-ink-400 mb-2">Buscar en Discogs</label>
+            <div class="flex gap-2">
+                <input id="discogsSearch" type="text" placeholder="Artista o album..."
+                    class="flex-1 bg-white border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+                <button onclick="searchDiscogs()" class="px-4 py-2 bg-ink-800 text-cream-50 rounded-xl text-sm hover:bg-ink-700 transition-all">Buscar</button>
+            </div>
+        </div>
+
+        <div id="discogsResults" class="space-y-2 max-h-64 overflow-y-auto mb-4"></div>
+
+        <!-- Form oculto para submit -->
+        <form id="addAlbumForm" action="/album/add" method="POST" class="hidden">
+            <input type="hidden" name="discogs_id" id="f_discogs_id" />
+            <input type="hidden" name="title" id="f_title" />
+            <input type="hidden" name="artist" id="f_artist" />
+            <input type="hidden" name="year" id="f_year" />
+            <input type="hidden" name="genre" id="f_genre" />
+            <input type="hidden" name="cover_url" id="f_cover_url" />
+            <input type="hidden" name="format_type" id="f_format_type" />
+            <input type="hidden" name="discogs_url" id="f_discogs_url" />
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if user %}
+<script>
+async function searchDiscogs() {
+    const q   = document.getElementById('discogsSearch').value.trim();
+    const box = document.getElementById('discogsResults');
+    if (!q) return;
+    box.innerHTML = '<p class="text-xs text-ink-400 text-center py-2">Buscando...</p>';
+
+    const resp    = await fetch(`/search/discogs?q=${encodeURIComponent(q)}`);
+    const results = await resp.json();
+
+    if (!results.length) {
+        box.innerHTML = '<p class="text-xs text-ink-400 text-center py-2">Sin resultados.</p>';
+        return;
+    }
+
+    box.innerHTML = results.map(r => `
+        <div onclick="selectAlbum(${JSON.stringify(r).replace(/"/g,'&quot;')})"
+            class="flex items-center gap-3 p-2 rounded-xl hover:bg-cream-200 cursor-pointer transition-all">
+            <img src="${r.cover_url || ''}" onerror="this.style.display='none'" class="w-10 h-10 rounded object-cover bg-cream-200 flex-shrink-0" />
+            <div class="min-w-0">
+                <p class="text-sm font-500 text-ink-800 truncate">${r.title}</p>
+                <p class="text-xs text-ink-400">${r.year || ''} ${r.format_type ? '· '+r.format_type : ''}</p>
+            </div>
+        </div>
+    `).join('');
+}
+
+function selectAlbum(r) {
+    // Separar artista del titulo (Discogs devuelve "Artista - Titulo")
+    const parts  = r.title.split(' - ');
+    const artist = parts.length > 1 ? parts[0].trim() : '';
+    const title  = parts.length > 1 ? parts.slice(1).join(' - ').trim() : r.title;
+
+    document.getElementById('f_discogs_id').value  = r.discogs_id || '';
+    document.getElementById('f_title').value       = title;
+    document.getElementById('f_artist').value      = artist;
+    document.getElementById('f_year').value        = r.year || '';
+    document.getElementById('f_genre').value       = r.genre || '';
+    document.getElementById('f_cover_url').value   = r.cover_url || '';
+    document.getElementById('f_format_type').value = r.format_type || '';
+    document.getElementById('f_discogs_url').value = r.discogs_url || '';
+    document.getElementById('addAlbumForm').submit();
+}
+
+document.getElementById('discogsSearch').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); searchDiscogs(); }
+});
+</script>
+{% endif %}
+{% endblock %}

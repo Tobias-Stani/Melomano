@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}{{ concert.artist }} — {{ concert.date.strftime('%d/%m/%Y') }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <a href="/concerts" class="inline-flex items-center gap-1.5 text-sm text-ink-400 hover:text-ink-700 mb-6 transition-all">
+        ← Volver a recitales
+    </a>
+
+    <div class="flex gap-6 items-start flex-wrap md:flex-nowrap mb-8">
+        {% if concert.cover_url %}
+        <img src="{{ concert.cover_url }}" alt="{{ concert.artist }}"
+            class="w-40 h-40 rounded-2xl object-cover shadow-md flex-shrink-0 bg-cream-200" />
+        {% else %}
+        <div class="w-40 h-40 rounded-2xl bg-cream-200 flex items-center justify-center text-5xl flex-shrink-0">🎤</div>
+        {% endif %}
+
+        <div class="flex-1">
+            <div class="flex flex-wrap gap-2 mb-2">
+                {% if concert.tour_name %}
+                <span class="text-xs bg-cream-200 text-ink-600 px-2.5 py-0.5 rounded-full">{{ concert.tour_name }}</span>
+                {% endif %}
+            </div>
+            <h1 class="font-serif text-3xl font-700 text-ink-800 tracking-tight leading-tight mb-1">{{ concert.artist }}</h1>
+            <p class="text-ink-400 text-sm mb-1">{{ concert.date.strftime('%d de %B de %Y') }}</p>
+            {% if concert.venue or concert.city %}
+            <p class="text-ink-500 text-sm">
+                {% if concert.venue %}{{ concert.venue }}{% endif %}
+                {% if concert.city %} &middot; {{ concert.city }}{% endif %}
+                {% if concert.country %}, {{ concert.country }}{% endif %}
+            </p>
+            {% endif %}
+            {% if concert.score %}
+            <div class="flex items-center gap-2 mt-4">
+                <span class="font-serif text-4xl font-700 text-ink-800">{{ concert.score }}</span>
+                <span class="text-ink-400">/10</span>
+                <span class="text-2xl">{{ emoji }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if concert.highlights %}
+    <div class="bg-cream-100 border border-cream-200 rounded-2xl p-5 mb-5">
+        <p class="text-xs uppercase tracking-widest text-ink-400 mb-2">Momento destacado</p>
+        <p class="text-ink-700 font-500 italic">{{ concert.highlights }}</p>
+    </div>
+    {% endif %}
+
+    {% if concert.review %}
+    <div class="mb-5">
+        <p class="text-xs uppercase tracking-widest text-ink-400 mb-2">Resena</p>
+        <blockquote class="border-l-2 border-cream-300 pl-4 text-ink-600 text-sm leading-relaxed">{{ concert.review }}</blockquote>
+    </div>
+    {% endif %}
+
+    {% if concert.setlist %}
+    <div class="mb-5">
+        <p class="text-xs uppercase tracking-widest text-ink-400 mb-3">Setlist</p>
+        <div class="bg-cream-50 border border-cream-200 rounded-xl p-4 font-mono text-sm text-ink-600 whitespace-pre-line">{{ concert.setlist }}</div>
+    </div>
+    {% endif %}
+
+    {% if user %}
+    <div class="flex gap-3 mt-8 pt-6 border-t border-cream-200">
+        <a href="/concerts/{{ concert.id }}/edit"
+            class="px-5 py-2.5 bg-ink-800 text-cream-50 rounded-xl text-sm hover:bg-ink-700 transition-all">
+            Editar
+        </a>
+        <a href="/concerts/{{ concert.id }}/delete"
+            onclick="return confirm('Eliminar este recital?')"
+            class="px-5 py-2.5 border border-cream-300 text-ink-400 rounded-xl text-sm hover:border-red-300 hover:text-red-400 transition-all">
+            Eliminar
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

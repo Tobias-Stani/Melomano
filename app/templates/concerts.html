@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Melomano — Recitales{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-8">
+    <div>
+        <h1 class="font-serif text-3xl font-700 text-ink-800 tracking-tight">Recitales</h1>
+        <p class="text-ink-400 text-sm mt-1">{{ concerts|length }} shows registrados</p>
+    </div>
+    {% if user %}
+    <a href="/concerts/new" class="px-4 py-2 bg-ink-800 text-cream-50 rounded-xl text-sm hover:bg-ink-700 transition-all">
+        + Nuevo recital
+    </a>
+    {% endif %}
+</div>
+
+{% if concerts %}
+<!-- Timeline -->
+<div class="relative">
+    <!-- Linea vertical -->
+    <div class="absolute left-[88px] top-0 bottom-0 w-px bg-cream-200 hidden md:block"></div>
+
+    <div class="space-y-4">
+        {% set current_year = namespace(val=0) %}
+        {% for concert in concerts %}
+
+        {% if concert.date.year != current_year.val %}
+        {% set current_year.val = concert.date.year %}
+        <div class="flex items-center gap-4 pt-2">
+            <span class="font-serif text-xl font-700 text-ink-300 w-[72px] text-right flex-shrink-0">{{ current_year.val }}</span>
+            <div class="hidden md:block w-4 h-4 rounded-full bg-cream-300 border-2 border-cream-100 flex-shrink-0 ml-px"></div>
+        </div>
+        {% endif %}
+
+        <div class="flex items-start gap-4">
+            <!-- Fecha -->
+            <div class="w-[72px] text-right flex-shrink-0 pt-3">
+                <p class="text-xs font-600 text-ink-500">{{ concert.date.strftime('%d %b') }}</p>
+            </div>
+
+            <!-- Dot -->
+            <div class="hidden md:flex w-4 h-4 rounded-full bg-cream-400 border-2 border-cream-100 flex-shrink-0 mt-3.5 ml-px"></div>
+
+            <!-- Card -->
+            <a href="/concerts/{{ concert.id }}" class="flex-1 group">
+                <div class="bg-cream-50 border border-cream-200 hover:border-cream-300 rounded-2xl p-4 transition-all flex gap-4 items-start">
+
+                    {% if concert.cover_url %}
+                    <img src="{{ concert.cover_url }}" alt="{{ concert.artist }}"
+                        class="w-14 h-14 rounded-xl object-cover flex-shrink-0 bg-cream-200" />
+                    {% else %}
+                    <div class="w-14 h-14 rounded-xl bg-cream-200 flex items-center justify-center text-2xl flex-shrink-0">🎤</div>
+                    {% endif %}
+
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <p class="font-600 text-ink-800 text-sm">{{ concert.artist }}</p>
+                                <p class="text-xs text-ink-400 mt-0.5">
+                                    {% if concert.venue %}{{ concert.venue }}{% endif %}
+                                    {% if concert.city %} · {{ concert.city }}{% endif %}
+                                </p>
+                            </div>
+                            {% if concert.score %}
+                            <span class="font-serif text-lg font-700 text-ink-600 flex-shrink-0">
+                                {{ concert.score }} {{ emojis.get(concert.score, '') }}
+                            </span>
+                            {% endif %}
+                        </div>
+                        {% if concert.highlights %}
+                        <p class="text-xs text-ink-400 mt-2 line-clamp-1 italic">{{ concert.highlights }}</p>
+                        {% elif concert.review %}
+                        <p class="text-xs text-ink-400 mt-2 line-clamp-1 italic">{{ concert.review }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<div class="text-center py-20">
+    <div class="text-6xl mb-4">🎤</div>
+    <p class="font-serif text-lg text-ink-500">No hay recitales registrados.</p>
+    {% if user %}
+    <a href="/concerts/new" class="mt-3 inline-block text-sm underline underline-offset-2 text-ink-400 hover:text-ink-700">
+        Registrar mi primer show
+    </a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

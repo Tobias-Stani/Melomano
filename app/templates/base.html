@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Melomano{% endblock %}</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cream: { 50:'#fdfaf5',100:'#f9f3e8',200:'#f0e6d0',300:'#e4ceac',400:'#d4b08a',500:'#c49268',600:'#a97348',700:'#8a5a35',800:'#6b4328',900:'#4a2e1a' },
+                        ink:   { 50:'#f5f4f2',100:'#e8e6e1',200:'#ccc9c1',300:'#aaa69b',400:'#888278',500:'#6b6560',600:'#514d49',700:'#3a3733',800:'#252320',900:'#141210' },
+                    },
+                    fontFamily: {
+                        serif: ['"Playfair Display"','Georgia','serif'],
+                        sans:  ['"Inter"','system-ui','sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family:'Inter',sans-serif; background-color:#f9f3e8; color:#252320; }
+        #globalTooltip {
+            display:none; position:fixed; background:#252320; color:#f9f3e8;
+            font-size:12px; line-height:1.5; padding:8px 12px; border-radius:8px;
+            z-index:9999; pointer-events:none; max-width:240px; text-align:center;
+            box-shadow:0 4px 16px rgba(0,0,0,0.18);
+        }
+        #globalTooltip::after {
+            content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%);
+            border:5px solid transparent; border-top-color:#252320;
+        }
+        ::-webkit-scrollbar { width:6px; }
+        ::-webkit-scrollbar-track { background:#f0e6d0; }
+        ::-webkit-scrollbar-thumb { background:#d4b08a; border-radius:3px; }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body class="min-h-screen">
+
+    <div id="globalTooltip"></div>
+
+    <!-- Navbar -->
+    <nav class="border-b border-cream-200 bg-cream-50 sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+            <a href="/" class="flex items-center gap-2.5">
+                <span class="text-2xl">🎵</span>
+                <span class="font-serif text-xl font-700 text-ink-800 tracking-tight">Melomano</span>
+            </a>
+            <div class="flex items-center gap-1">
+                <a href="/" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all
+                    {% if request.url.path == '/' %}bg-cream-300 text-ink-800{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200{% endif %}">
+                    Coleccion
+                </a>
+                <a href="/concerts" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all
+                    {% if '/concerts' in request.url.path %}bg-cream-300 text-ink-800{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200{% endif %}">
+                    Recitales
+                </a>
+                {% if user %}
+                <a href="/sync/status" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all
+                    {% if '/sync' in request.url.path %}bg-cream-300 text-ink-800{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200{% endif %}">
+                    Sync
+                </a>
+                <a href="/logout" class="ml-2 px-4 py-1.5 rounded-full text-sm font-medium text-ink-300 hover:text-ink-600 hover:bg-cream-200 transition-all">
+                    Salir
+                </a>
+                {% else %}
+                <a href="/login" class="ml-2 px-4 py-1.5 rounded-full text-sm font-medium bg-ink-800 text-cream-50 hover:bg-ink-700 transition-all">
+                    Ingresar
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto px-6 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="text-center py-6 text-ink-300 text-xs border-t border-cream-200 mt-8">
+        Melomano &mdash; Tu universo musical
+    </footer>
+
+    <script>
+        // Tooltip global reutilizable
+        const _tt = document.getElementById('globalTooltip');
+        function showTip(e, html) {
+            _tt.innerHTML = html;
+            _tt.style.display = 'block';
+            moveTip(e);
+        }
+        function moveTip(e) {
+            const w = _tt.offsetWidth, h = _tt.offsetHeight;
+            let x = e.clientX - w/2, y = e.clientY - h - 12;
+            x = Math.max(8, Math.min(x, window.innerWidth - w - 8));
+            if (y < 8) y = e.clientY + 20;
+            _tt.style.left = x+'px'; _tt.style.top = y+'px';
+        }
+        function hideTip() { _tt.style.display = 'none'; }
+        document.addEventListener('mousemove', e => { if(_tt.style.display==='block') moveTip(e); });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

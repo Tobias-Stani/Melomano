@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Melomano — {% if concert %}Editar recital{% else %}Nuevo recital{% endif %}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <a href="/concerts" class="inline-flex items-center gap-1.5 text-sm text-ink-400 hover:text-ink-700 mb-6 transition-all">
+        ← Volver a recitales
+    </a>
+
+    <h1 class="font-serif text-3xl font-700 text-ink-800 mb-8 tracking-tight">
+        {% if concert %}Editar recital{% else %}Nuevo recital{% endif %}
+    </h1>
+
+    <div class="bg-cream-50 border border-cream-200 rounded-2xl p-8">
+        <form action="{% if concert %}/concerts/{{ concert.id }}/edit{% else %}/concerts/new{% endif %}" method="POST" class="space-y-6">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div class="md:col-span-2">
+                    <label class="block text-xs uppercase tracking-widest text-ink-400 mb-2">Artista *</label>
+                    <input type="text" name="artist" required value="{{ concert.artist if concert else '' }}"
+                        placeholder="Nombre del artista o banda"
+                        class="w-full bg-white border border-cream-200 rounded-xl px-4 py-3 text-ink-800 text-sm focus:outline-none focus:ring-2 focus:ring-cream-400 transition-all" />
+                </div>
+
+                <div>
+                    <label class="block text-xs uppercase tracking-widest text-ink-400 mb-2">Fecha *</label>
+                    <input type="date" name="date" required value="{{ concert.date.isoformat() if concert else today }}"
+                        class="w-full bg-white border border-cream-200 rounded-xl px-4 py-3 text-ink-800 text-sm focus:outline-none focus:ring-2 focus:ring-cream-400 transition-all" />
+                </div>
+
+                <div>
+                    <label class="block text-xs uppercase tracking-widest text-ink-400 mb-2">Tour / Festival</label>
+                    <input type="text" name="tour_name" value="{{ concert.tour_name if concert else '' }}"
+                        placeholder="Nombre del tour o festival"
+                        class="w-full bg-white border border-cream-200 rounded-xl px-4 py-3 text-ink-800 text-sm focus:outline-none focus:ring-2 focus:ring-cream-400 transition-all" />
+                </div>
+
+                <div>
+                    <label class="block text-xs uppercase tracking-widest text-ink-400 mb-2">Venue / Estadio</label>
+                    <input type="text" name="venue" value="{{ concert.venue if concert else '' }}"
+                        placeholder="Luna Park, Movistar Arena..."
+                        class="w-full bg-white border border-cream-200 rounded-xl px-4 py-3 text-ink-800 text-sm focus:outline-none focus:ring-2 focus:ring-cream-400 transition-all" />
+                </div>
+
+                <div>
+                    <label class="block text-xs uppercase tracking-widest text-ink-400 mb-2">Ciudad</label>
+                    <input type="text" name="city" value="{{ concert.city if concert else '' }}"
+                        placeholder="Buenos Aires..."
+                        class="w-full bg-white border border-cream-200 rounded-xl px-4 py-3 text-ink-800 text-sm focus:outline-none focus:ring-2 focus:ring-cream-400 transition-all" />
+                </div>
+
+                <div>
+                    <label class="block text-xs uppercase tracking-widest text-ink-400 mb-2">Pais</label>
+                    <input type="text" name="country" value="{{ concert.country if concert else '' }}"
+                        placeholder="Argentina..."
+                        class="w-full bg-white border border-cream-200 rounded-xl px-4 py-3 text-ink-800 text-sm focus:outline-none focus:ring-2 focus:ring-cream-400 transition-all" />
+                </div>
+
+                <div>
+                    <label class="block text-xs uppercase tracking-widest text-ink-400 mb-3">
+                        Nota: <span id="scoreVal" class="font-serif text-2xl font-700 text-ink-800 ml-2">{{ concert.score if concert else 8 }}</span>/10
+                    </label>
+                    <input type="range" name="score" min="1" max="10" value="{{ concert.score if concert else 8 }}"
+                        class="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+                        style="-webkit-appearance:none;background:#e4ceac;"
+                        oninput="document.getElementById('scoreVal').textContent=this.value" />
+                </div>
+
+                <div>
+                    <label class="block text-xs uppercase tracking-widest text-ink-400 mb-2">URL imagen (portada/foto)</label>
+                    <input type="url" name="cover_url" value="{{ concert.cover_url if concert else '' }}"
+                        placeholder="https://..."
+                        class="w-full bg-white border border-cream-200 rounded-xl px-4 py-3 text-ink-800 text-sm focus:outline-none focus:ring-2 focus:ring-cream-400 transition-all" />
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-xs uppercase tracking-widest text-ink-400 mb-2">Momento destacado</label>
+                    <input type="text" name="highlights" value="{{ concert.highlights if concert else '' }}"
+                        placeholder="Lo mejor del show, el momento que no olvidaras..."
+                        class="w-full bg-white border border-cream-200 rounded-xl px-4 py-3 text-ink-800 text-sm focus:outline-none focus:ring-2 focus:ring-cream-400 transition-all" />
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-xs uppercase tracking-widest text-ink-400 mb-2">Resena personal</label>
+                    <textarea name="review" rows="3" placeholder="Como fue el show, el ambiente, que sentiste..."
+                        class="w-full bg-white border border-cream-200 rounded-xl px-4 py-3 text-ink-800 text-sm focus:outline-none focus:ring-2 focus:ring-cream-400 resize-none">{{ concert.review if concert else '' }}</textarea>
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-xs uppercase tracking-widest text-ink-400 mb-2">Setlist</label>
+                    <textarea name="setlist" rows="4" placeholder="1. Cancion&#10;2. Cancion&#10;..."
+                        class="w-full bg-white border border-cream-200 rounded-xl px-4 py-3 text-ink-800 text-sm focus:outline-none focus:ring-2 focus:ring-cream-400 resize-none font-mono">{{ concert.setlist if concert else '' }}</textarea>
+                </div>
+            </div>
+
+            <div class="flex gap-3 pt-2">
+                <button type="submit" class="px-6 py-3 bg-ink-800 text-cream-50 rounded-xl text-sm hover:bg-ink-700 transition-all">
+                    {% if concert %}Guardar cambios{% else %}Registrar show{% endif %}
+                </button>
+                <a href="{% if concert %}/concerts/{{ concert.id }}{% else %}/concerts{% endif %}"
+                    class="px-6 py-3 border border-cream-300 text-ink-400 rounded-xl text-sm hover:bg-cream-200 transition-all">
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
