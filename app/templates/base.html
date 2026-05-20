@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es" class="h-full">
+<script>if(localStorage.getItem('theme')==='dark')document.documentElement.classList.add('dark');</script>
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -26,6 +27,32 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         body { font-family:'Inter',sans-serif; background-color:#f9f3e8; color:#252320; }
+
+        /* ── Dark mode overrides ── */
+        html.dark body                          { background-color:#111827; color:#f3f4f6; }
+        html.dark .bg-cream-50                  { background-color:#111827 !important; }
+        html.dark .bg-cream-100                 { background-color:#1f2937 !important; }
+        html.dark .bg-cream-200                 { background-color:#374151 !important; }
+        html.dark .bg-cream-300                 { background-color:#4b5563 !important; }
+        html.dark .bg-white                     { background-color:#1f2937 !important; }
+        html.dark .border-cream-200             { border-color:#374151 !important; }
+        html.dark .border-cream-300             { border-color:#4b5563 !important; }
+        html.dark .text-ink-800                 { color:#f9fafb !important; }
+        html.dark .text-ink-700                 { color:#f3f4f6 !important; }
+        html.dark .text-ink-600                 { color:#e5e7eb !important; }
+        html.dark .text-ink-500                 { color:#d1d5db !important; }
+        html.dark .text-ink-400                 { color:#9ca3af !important; }
+        html.dark .text-ink-300                 { color:#6b7280 !important; }
+        html.dark .bg-ink-800                   { background-color:#e5e7eb !important; }
+        html.dark .text-cream-50                { color:#111827 !important; }
+        html.dark .hover\:bg-ink-700:hover      { background-color:#d1d5db !important; }
+        html.dark .hover\:bg-cream-200:hover    { background-color:#374151 !important; }
+        html.dark .hover\:text-ink-700:hover    { color:#f9fafb !important; }
+        html.dark .focus\:ring-cream-400:focus  { --tw-ring-color:#6b7280 !important; }
+        html.dark footer                        { border-color:#374151; }
+        html.dark nav                           { background-color:#1f2937 !important; border-color:#374151 !important; }
+        html.dark .shadow-sm, html.dark .shadow-md { box-shadow:0 1px 3px rgba(0,0,0,.5) !important; }
+
         #globalTooltip {
             display:none; position:fixed; background:#252320; color:#f9f3e8;
             font-size:12px; line-height:1.5; padding:8px 12px; border-radius:8px;
@@ -54,6 +81,9 @@
                 <span class="font-serif text-xl font-700 text-ink-800 tracking-tight">Melomano</span>
             </a>
             <div class="flex items-center gap-1">
+                <button id="themeToggle" onclick="toggleTheme()"
+                    class="px-3 py-1.5 rounded-full text-sm transition-all text-ink-400 hover:text-ink-700 hover:bg-cream-200"
+                    title="Cambiar tema">🌙</button>
                 <a href="/" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all
                     {% if request.url.path == '/' %}bg-cream-300 text-ink-800{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200{% endif %}">
                     Coleccion
@@ -61,6 +91,10 @@
                 <a href="/concerts" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all
                     {% if '/concerts' in request.url.path %}bg-cream-300 text-ink-800{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200{% endif %}">
                     Recitales
+                </a>
+                <a href="/bares" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all
+                    {% if '/bares' in request.url.path %}bg-cream-300 text-ink-800{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200{% endif %}">
+                    Bares Hifi
                 </a>
                 <a href="/perfil" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all
                     {% if '/perfil' in request.url.path %}bg-cream-300 text-ink-800{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200{% endif %}">
@@ -116,6 +150,16 @@
         }
         function hideTip() { _tt.style.display = 'none'; }
         document.addEventListener('mousemove', e => { if(_tt.style.display==='block') moveTip(e); });
+    </script>
+    <script>
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            document.getElementById('themeToggle').textContent = isDark ? '☀️' : '🌙';
+        }
+        // Sync icon on load
+        if(document.documentElement.classList.contains('dark'))
+            document.getElementById('themeToggle').textContent = '☀️';
     </script>
     {% block scripts %}{% endblock %}
 </body>

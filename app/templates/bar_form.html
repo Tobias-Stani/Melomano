@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{% if bar %}Editar{% else %}Nuevo{% endif %} bar — Melomano{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto">
+    <a href="{% if bar %}/bares/{{ bar.id }}{% else %}/bares{% endif %}"
+        class="inline-flex items-center gap-1.5 text-sm text-ink-400 hover:text-ink-700 mb-6 transition-all">
+        ← Volver
+    </a>
+    <h1 class="font-serif text-3xl font-700 text-ink-800 tracking-tight mb-8">
+        {% if bar %}Editar bar{% else %}Agregar bar hifi{% endif %}
+    </h1>
+
+    <form action="{% if bar %}/bares/{{ bar.id }}/editar{% else %}/bares/nuevo{% endif %}" method="POST" class="space-y-5">
+
+        <div>
+            <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Nombre *</label>
+            <input type="text" name="name" required value="{{ bar.name if bar else '' }}" placeholder="Ej: Bar del Vinilo"
+                class="w-full bg-white border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Ciudad</label>
+                <input type="text" name="city" value="{{ bar.city if bar else '' }}" placeholder="Ej: Buenos Aires"
+                    class="w-full bg-white border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+            </div>
+            <div>
+                <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">País</label>
+                <input type="text" name="country" value="{{ bar.country if bar else '' }}" placeholder="Ej: Argentina"
+                    class="w-full bg-white border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+            </div>
+        </div>
+
+        <div>
+            <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Dirección</label>
+            <input type="text" name="address" value="{{ bar.address if bar else '' }}" placeholder="Ej: Av. Corrientes 1234"
+                class="w-full bg-white border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+        </div>
+
+        <div>
+            <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Link de Google Maps</label>
+            <input type="url" name="maps_url" value="{{ bar.maps_url if bar else '' }}" placeholder="https://maps.google.com/..."
+                class="w-full bg-white border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+            <p class="text-xs text-ink-300 mt-1">Pegá el link de compartir de Google Maps. Si no lo ponés, se usa la dirección.</p>
+        </div>
+
+        <div>
+            <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Descripción</label>
+            <textarea name="description" rows="3" placeholder="Ambiente, sistema de audio, que lo hace especial..."
+                class="w-full bg-white border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400 resize-none">{{ bar.description if bar else '' }}</textarea>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+            <button type="submit"
+                class="px-6 py-2.5 bg-ink-800 text-cream-50 rounded-xl text-sm font-600 hover:bg-ink-700 transition-all">
+                {% if bar %}Guardar cambios{% else %}Crear bar{% endif %}
+            </button>
+            <a href="{% if bar %}/bares/{{ bar.id }}{% else %}/bares{% endif %}"
+                class="px-6 py-2.5 border border-cream-300 text-ink-400 rounded-xl text-sm hover:bg-cream-200 transition-all">
+                Cancelar
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

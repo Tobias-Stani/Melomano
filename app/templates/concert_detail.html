@@ -65,7 +65,6 @@
     <div id="fotos" class="mt-8 pt-6 border-t border-cream-200">
         <p class="text-xs uppercase tracking-widest text-ink-400 mb-4">Fotos del recital</p>
 
-        {% set active_photos = concert.photos | selectattr('deleted_at', 'none') | list %}
         {% if active_photos %}
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
             {% for photo in active_photos %}
@@ -73,7 +72,7 @@
                 <img src="data:{{ photo.mime_type }};base64,{{ photo.data }}"
                     alt="{{ photo.caption or 'Foto del recital' }}"
                     class="w-full h-full object-cover cursor-pointer transition-transform group-hover:scale-105"
-                    onclick="openLightbox('data:{{ photo.mime_type }};base64,{{ photo.data }}', '{{ photo.caption or '' }}')" />
+                    onclick="openLightbox({{ loop.index0 }})" />
                 {% if photo.caption %}
                 <div class="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs px-2 py-1 truncate">
                     {{ photo.caption }}
@@ -99,7 +98,7 @@
         </div>
         {% else %}
         <p class="text-sm text-ink-300 mb-6">Todavia no hay fotos para este recital.</p>
-        {% endif %}  {# active_photos #}
+        {% endif %}
 
         {% if user %}
         <form action="/concerts/{{ concert.id }}/photos" method="POST" enctype="multipart/form-data"
@@ -146,25 +145,92 @@
 </div>
 
 <!-- Lightbox -->
-<div id="lightbox" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
-    onclick="closeLightbox()">
-    <div class="relative max-w-4xl max-h-full">
-        <img id="lightboxImg" src="" alt="" class="max-w-full max-h-[85vh] rounded-xl object-contain shadow-2xl" />
-        <p id="lightboxCaption" class="text-center text-white text-sm mt-3 opacity-70"></p>
+<div id="lightbox" class="hidden fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4">
+    <!-- Cerrar -->
+    <button onclick="closeLightbox()"
+        class="absolute top-4 right-4 text-white/70 hover:text-white text-3xl leading-none z-10">&times;</button>
+
+    <!-- Prev -->
+    <button onclick="stepLightbox(-1)"
+        class="absolute left-3 sm:left-6 text-white/70 hover:text-white text-4xl leading-none z-10 select-none">&#8249;</button>
+
+    <!-- Imagen -->
+    <div class="flex flex-col items-center max-w-4xl w-full" onclick.stop>
+        <img id="lightboxImg" src="" alt=""
+            class="max-w-full max-h-[82vh] rounded-xl object-contain shadow-2xl" />
+        <div class="flex items-center gap-3 mt-3">
+            <p id="lightboxCaption" class="text-white text-sm opacity-70"></p>
+            <span id="lightboxCounter" class="text-white/40 text-xs"></span>
+        </div>
+        <!-- Dots -->
+        <div id="lightboxDots" class="flex gap-1.5 mt-2"></div>
     </div>
+
+    <!-- Next -->
+    <button onclick="stepLightbox(1)"
+        class="absolute right-3 sm:right-6 text-white/70 hover:text-white text-4xl leading-none z-10 select-none">&#8250;</button>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-function openLightbox(src, caption) {
-    document.getElementById('lightboxImg').src = src;
-    document.getElementById('lightboxCaption').textContent = caption;
+const _photos = [
+    {% for photo in active_photos %}
+    { src: "data:{{ photo.mime_type }};base64,{{ photo.data }}", caption: "{{ photo.caption or '' }}" }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+let _current = 0;
+
+function openLightbox(index) {
+    _current = index;
+    _renderLightbox();
     document.getElementById('lightbox').classList.remove('hidden');
 }
+
 function closeLightbox() {
     document.getElementById('lightbox').classList.add('hidden');
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+function stepLightbox(dir) {
+    _current = (_current + dir + _photos.length) % _photos.length;
+    _renderLightbox();
+}
+
+function _renderLightbox() {
+    const p = _photos[_current];
+    document.getElementById('lightboxImg').src        = p.src;
+    document.getElementById('lightboxCaption').textContent = p.caption;
+    document.getElementById('lightboxCounter').textContent = _photos.length > 1
+        ? `${_current + 1} / ${_photos.length}` : '';
+
+    const dots = document.getElementById('lightboxDots');
+    dots.innerHTML = _photos.length > 1
+        ? _photos.map((_, i) =>
+            `<button onclick="openLightbox(${i})"
+                class="w-1.5 h-1.5 rounded-full transition-all ${i === _current ? 'bg-white' : 'bg-white/30'}"></button>`
+          ).join('') : '';
+}
+
+// Cerrar al click en el fondo
+document.getElementById('lightbox').addEventListener('click', function(e) {
+    if (e.target === this) closeLightbox();
+});
+
+// Teclado
+document.addEventListener('keydown', e => {
+    if (!document.getElementById('lightbox').classList.contains('hidden')) {
+        if (e.key === 'Escape')     closeLightbox();
+        if (e.key === 'ArrowRight') stepLightbox(1);
+        if (e.key === 'ArrowLeft')  stepLightbox(-1);
+    }
+});
+
+// Swipe touch
+let _tx = 0;
+document.getElementById('lightbox').addEventListener('touchstart', e => _tx = e.touches[0].clientX);
+document.getElementById('lightbox').addEventListener('touchend',   e => {
+    const dx = e.changedTouches[0].clientX - _tx;
+    if (Math.abs(dx) > 50) stepLightbox(dx < 0 ? 1 : -1);
+});
 </script>
 {% endblock %}

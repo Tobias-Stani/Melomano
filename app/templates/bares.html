@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Melomano — Bares Hifi{% endblock %}
+
+{% block content %}
+<div class="flex items-start justify-between mb-8 gap-4 flex-wrap">
+    <div>
+        <h1 class="font-serif text-3xl font-700 text-ink-800 tracking-tight">Bares Hifi</h1>
+        <p class="text-ink-400 text-sm mt-1">{{ bars|length }} lugar{% if bars|length != 1 %}es{% endif %} registrado{% if bars|length != 1 %}s{% endif %}</p>
+    </div>
+    {% if user %}
+    <a href="/bares/nuevo"
+        class="px-4 py-2 rounded-xl text-sm font-500 bg-ink-800 text-cream-50 hover:bg-ink-700 transition-all">
+        + Agregar bar
+    </a>
+    {% endif %}
+</div>
+
+{% if bars %}
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+    {% for bar in bars %}
+    <a href="/bares/{{ bar.id }}" class="group block bg-cream-50 border border-cream-200 rounded-2xl overflow-hidden hover:shadow-lg hover:border-cream-300 transition-all">
+        <!-- Cover -->
+        <div class="aspect-video bg-cream-200 overflow-hidden relative">
+            {% if bar.cover_url %}
+            <img src="{{ bar.cover_url }}" alt="{{ bar.name }}"
+                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+            {% else %}
+            <div class="w-full h-full flex items-center justify-center text-5xl">🎶</div>
+            {% endif %}
+            <!-- Badge visitas -->
+            <div class="absolute top-3 right-3 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full">
+                {{ bar.visits|length }} visita{% if bar.visits|length != 1 %}s{% endif %}
+            </div>
+        </div>
+        <!-- Info -->
+        <div class="p-4">
+            <h2 class="font-serif font-700 text-ink-800 text-lg leading-tight group-hover:text-ink-600 transition-all">{{ bar.name }}</h2>
+            {% if bar.city or bar.country %}
+            <p class="text-xs text-ink-400 mt-0.5">
+                📍 {{ bar.city }}{% if bar.city and bar.country %}, {% endif %}{{ bar.country }}
+            </p>
+            {% endif %}
+            {% if bar.description %}
+            <p class="text-sm text-ink-500 mt-2 line-clamp-2 leading-relaxed">{{ bar.description }}</p>
+            {% endif %}
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-20">
+    <div class="text-6xl mb-4">🎶</div>
+    <p class="font-serif text-lg text-ink-500">Todavia no hay bares registrados.</p>
+    {% if user %}
+    <a href="/bares/nuevo" class="inline-block mt-4 px-5 py-2.5 bg-ink-800 text-cream-50 rounded-xl text-sm hover:bg-ink-700 transition-all">
+        Agregar el primero
+    </a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

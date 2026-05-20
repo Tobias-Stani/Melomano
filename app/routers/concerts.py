@@ -85,10 +85,14 @@ async def concert_detail(concert_id: int, request: Request, db: Session = Depend
     is_featured = db.query(FeaturedItem).filter(
         FeaturedItem.type == "concert", FeaturedItem.item_id == concert_id
     ).first() is not None
+    active_photos = [p for p in concert.photos if p.deleted_at is None]
     return templates.TemplateResponse("concert_detail.html", {
-        "request": request, "user": user, "concert": concert,
-        "emoji": EMOJIS.get(concert.score, "") if concert.score else "",
-        "is_featured": is_featured,
+        "request":      request,
+        "user":         user,
+        "concert":      concert,
+        "emoji":        EMOJIS.get(concert.score, "") if concert.score else "",
+        "is_featured":  is_featured,
+        "active_photos": active_photos,
     })
 
 

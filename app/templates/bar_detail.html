@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% block title %}{{ bar.name }} — Melomano{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <a href="/bares" class="inline-flex items-center gap-1.5 text-sm text-ink-400 hover:text-ink-700 mb-6 transition-all">
+        ← Volver a bares
+    </a>
+
+    <!-- Header -->
+    <div class="flex gap-6 items-start flex-wrap md:flex-nowrap mb-8">
+        {% if bar.cover_url %}
+        <img src="{{ bar.cover_url }}" alt="{{ bar.name }}"
+            class="w-40 h-40 rounded-2xl object-cover shadow-md flex-shrink-0 bg-cream-200" />
+        {% else %}
+        <div class="w-40 h-40 rounded-2xl bg-cream-200 flex items-center justify-center text-5xl flex-shrink-0">🎶</div>
+        {% endif %}
+
+        <div class="flex-1">
+            <h1 class="font-serif text-3xl font-700 text-ink-800 tracking-tight leading-tight mb-1">{{ bar.name }}</h1>
+            {% if bar.city or bar.country %}
+            <p class="text-ink-500 text-sm mb-1">
+                📍 {% if bar.city %}{{ bar.city }}{% endif %}{% if bar.city and bar.country %}, {% endif %}{% if bar.country %}{{ bar.country }}{% endif %}
+            </p>
+            {% endif %}
+            {% if bar.address %}
+            <p class="text-ink-400 text-xs mb-3">{{ bar.address }}</p>
+            {% endif %}
+            {% if bar.description %}
+            <p class="text-ink-600 text-sm leading-relaxed">{{ bar.description }}</p>
+            {% endif %}
+            <div class="flex items-center gap-2 mt-3">
+                <span class="text-xs bg-cream-200 text-ink-600 px-2.5 py-0.5 rounded-full">
+                    {{ bar.visits|length }} visita{% if bar.visits|length != 1 %}s{% endif %}
+                </span>
+                {% if bar.maps_url or bar.address %}
+                <a href="{{ bar.maps_url or 'https://maps.google.com/maps?q=' ~ bar.address }}" target="_blank"
+                    class="text-xs text-ink-400 hover:text-ink-700 underline transition-all">
+                    Ver en Maps ↗
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Mapa -->
+    {% if maps_embed %}
+    <div class="rounded-2xl overflow-hidden border border-cream-200 mb-8 shadow-sm" style="height:260px">
+        <iframe src="{{ maps_embed }}" width="100%" height="100%" style="border:0" allowfullscreen loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"></iframe>
+    </div>
+    {% endif %}
+
+    <!-- Visitas -->
+    <section id="visitas" class="mb-10">
+        <p class="text-xs uppercase tracking-widest text-ink-400 mb-5">Visitas</p>
+
+        {% if bar.visits %}
+        <div class="space-y-3 mb-6">
+            {% for visit in bar.visits %}
+            <div class="bg-cream-100 border border-cream-200 rounded-2xl p-4">
+                <div class="flex items-start justify-between gap-3 flex-wrap">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 flex-wrap mb-1">
+                            <span class="font-600 text-ink-800 text-sm">{{ visit.date.strftime('%d/%m/%Y') }}</span>
+                            {% if visit.score %}
+                            <span class="text-lg">{{ emojis[visit.score] }}</span>
+                            <span class="text-xs font-600 text-ink-500">{{ visit.score }}/10</span>
+                            {% endif %}
+                        </div>
+                        {% if visit.drinks %}
+                        <p class="text-xs text-ink-500 mt-1">🥃 {{ visit.drinks }}</p>
+                        {% endif %}
+                        {% if visit.notes %}
+                        <p class="text-sm text-ink-600 mt-2 leading-relaxed italic border-l-2 border-cream-300 pl-3">{{ visit.notes }}</p>
+                        {% endif %}
+                    </div>
+                    {% if user %}
+                    <a href="/bares/{{ bar.id }}/visitas/{{ visit.id }}/delete"
+                        onclick="return confirm('Eliminar esta visita?')"
+                        class="text-ink-300 hover:text-red-400 text-xs transition-all flex-shrink-0">✕</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-ink-300 mb-6">Todavia no hay visitas registradas.</p>
+        {% endif %}
+
+        {% if user %}
+        <details class="bg-cream-100 border border-cream-200 rounded-2xl overflow-hidden">
+            <summary class="px-4 py-3 text-sm font-500 text-ink-600 cursor-pointer hover:bg-cream-200 transition-all list-none flex items-center gap-2">
+                <span class="text-ink-400">+</span> Registrar visita
+            </summary>
+            <form action="/bares/{{ bar.id }}/visitas" method="POST" class="px-4 pb-4 pt-2 space-y-3 border-t border-cream-200">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Fecha *</label>
+                        <input type="date" name="date" value="{{ today }}" required
+                            class="w-full bg-white border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+                    </div>
+                    <div>
+                        <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">
+                            Nota: <span id="visitScoreVal" class="font-serif text-lg font-700 text-ink-800">5</span>/10
+                        </label>
+                        <input type="range" name="score" min="1" max="10" value="5"
+                            oninput="document.getElementById('visitScoreVal').textContent=this.value"
+                            class="w-full h-1.5 rounded-full appearance-none cursor-pointer mt-2"
+                            style="-webkit-appearance:none;background:#e4ceac;" />
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">¿Qué tomaste?</label>
+                    <input type="text" name="drinks" placeholder="Ej: Whisky japonés, cerveza artesanal..."
+                        class="w-full bg-white border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+                </div>
+                <div>
+                    <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Notas</label>
+                    <textarea name="notes" rows="2" placeholder="Qué sonaba, el ambiente, con quien fuiste..."
+                        class="w-full bg-white border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400 resize-none"></textarea>
+                </div>
+                <button type="submit"
+                    class="px-5 py-2 bg-ink-800 text-cream-50 rounded-xl text-sm hover:bg-ink-700 transition-all">
+                    Guardar visita
+                </button>
+            </form>
+        </details>
+        {% endif %}
+    </section>
+
+    <!-- Fotos -->
+    <section id="fotos" class="mb-8">
+        <p class="text-xs uppercase tracking-widest text-ink-400 mb-4">Fotos</p>
+
+        {% if active_photos %}
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
+            {% for photo in active_photos %}
+            <div class="relative group rounded-xl overflow-hidden aspect-square bg-cream-200">
+                <img src="data:{{ photo.mime_type }};base64,{{ photo.data }}"
+                    alt="{{ photo.caption or 'Foto del bar' }}"
+                    class="w-full h-full object-cover cursor-pointer transition-transform group-hover:scale-105"
+                    onclick="openLightbox({{ loop.index0 }})" />
+                {% if photo.caption %}
+                <div class="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs px-2 py-1 truncate">{{ photo.caption }}</div>
+                {% endif %}
+                {% if user %}
+                <div class="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <a href="/bares/{{ bar.id }}/fotos/{{ photo.id }}/set-cover" title="Usar como portada"
+                        class="bg-black/60 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center hover:bg-amber-500">★</a>
+                    <a href="/bares/{{ bar.id }}/fotos/{{ photo.id }}/delete"
+                        onclick="return confirm('Eliminar foto?')" title="Eliminar"
+                        class="bg-black/60 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600">&times;</a>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-ink-300 mb-5">Todavia no hay fotos de este bar.</p>
+        {% endif %}
+
+        {% if user %}
+        <form action="/bares/{{ bar.id }}/fotos" method="POST" enctype="multipart/form-data"
+            class="bg-cream-100 border border-cream-200 rounded-2xl p-4">
+            <p class="text-xs uppercase tracking-widest text-ink-400 mb-3">Subir fotos</p>
+            <input type="file" name="photos" multiple accept="image/*"
+                class="w-full text-sm text-ink-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-ink-800 file:text-cream-50 file:text-xs file:cursor-pointer hover:file:bg-ink-700 mb-3" />
+            <button type="submit"
+                class="px-5 py-2 bg-ink-800 text-cream-50 rounded-xl text-sm hover:bg-ink-700 transition-all">
+                Subir
+            </button>
+        </form>
+        {% endif %}
+    </section>
+
+    {% if user %}
+    <div class="flex gap-3 pt-6 border-t border-cream-200">
+        <a href="/bares/{{ bar.id }}/editar"
+            class="px-5 py-2.5 bg-ink-800 text-cream-50 rounded-xl text-sm hover:bg-ink-700 transition-all">
+            Editar
+        </a>
+        <a href="/bares/{{ bar.id }}/delete" onclick="return confirm('Eliminar este bar?')"
+            class="px-5 py-2.5 border border-cream-300 text-ink-400 rounded-xl text-sm hover:border-red-300 hover:text-red-400 transition-all">
+            Eliminar
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Lightbox -->
+<div id="lightbox" class="hidden fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4">
+    <button onclick="closeLightbox()" class="absolute top-4 right-4 text-white/70 hover:text-white text-3xl leading-none z-10">&times;</button>
+    <button onclick="stepLightbox(-1)" class="absolute left-3 sm:left-6 text-white/70 hover:text-white text-4xl leading-none z-10 select-none">&#8249;</button>
+    <div class="flex flex-col items-center max-w-4xl w-full">
+        <img id="lightboxImg" src="" alt="" class="max-w-full max-h-[82vh] rounded-xl object-contain shadow-2xl" />
+        <div class="flex items-center gap-3 mt-3">
+            <p id="lightboxCaption" class="text-white text-sm opacity-70"></p>
+            <span id="lightboxCounter" class="text-white/40 text-xs"></span>
+        </div>
+        <div id="lightboxDots" class="flex gap-1.5 mt-2"></div>
+    </div>
+    <button onclick="stepLightbox(1)" class="absolute right-3 sm:right-6 text-white/70 hover:text-white text-4xl leading-none z-10 select-none">&#8250;</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const _photos = [
+    {% for photo in active_photos %}
+    { src: "data:{{ photo.mime_type }};base64,{{ photo.data }}", caption: "{{ photo.caption or '' }}" }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+let _current = 0;
+
+function openLightbox(i)   { _current = i; _render(); document.getElementById('lightbox').classList.remove('hidden'); }
+function closeLightbox()   { document.getElementById('lightbox').classList.add('hidden'); }
+function stepLightbox(dir) { _current = (_current + dir + _photos.length) % _photos.length; _render(); }
+
+function _render() {
+    const p = _photos[_current];
+    document.getElementById('lightboxImg').src = p.src;
+    document.getElementById('lightboxCaption').textContent = p.caption;
+    document.getElementById('lightboxCounter').textContent = _photos.length > 1 ? `${_current+1} / ${_photos.length}` : '';
+    document.getElementById('lightboxDots').innerHTML = _photos.length > 1
+        ? _photos.map((_,i) => `<button onclick="openLightbox(${i})" class="w-1.5 h-1.5 rounded-full transition-all ${i===_current?'bg-white':'bg-white/30'}"></button>`).join('') : '';
+}
+
+document.getElementById('lightbox').addEventListener('click', e => { if(e.target===document.getElementById('lightbox')) closeLightbox(); });
+document.addEventListener('keydown', e => {
+    if(!document.getElementById('lightbox').classList.contains('hidden')) {
+        if(e.key==='Escape') closeLightbox();
+        if(e.key==='ArrowRight') stepLightbox(1);
+        if(e.key==='ArrowLeft')  stepLightbox(-1);
+    }
+});
+let _tx=0;
+document.getElementById('lightbox').addEventListener('touchstart', e => _tx=e.touches[0].clientX);
+document.getElementById('lightbox').addEventListener('touchend',   e => { const dx=e.changedTouches[0].clientX-_tx; if(Math.abs(dx)>50) stepLightbox(dx<0?1:-1); });
+</script>
+{% endblock %}
