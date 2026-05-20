@@ -22,6 +22,7 @@ class Concert(Base):
     setlist     = Column(Text, nullable=True)      # canciones que tocaron
     highlights  = Column(Text, nullable=True)      # momento especial
     cover_url   = Column(Text, nullable=True)      # foto del show o del artista
+    banner_url  = Column(Text, nullable=True)      # imagen de fondo ancha (header)
 
     created_at  = Column(DateTime(timezone=True), server_default=func.now())
     updated_at  = Column(DateTime(timezone=True), onupdate=func.now())

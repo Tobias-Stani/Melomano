@@ -80,6 +80,11 @@
                         ★ {% if is_featured %}En perfil{% else %}Agregar al perfil{% endif %}
                     </button>
                 </form>
+                <a href="/album/{{ album.id }}/delete"
+                    onclick="return confirm('Eliminar este album?')"
+                    class="text-sm text-ink-300 hover:text-red-400 transition-all">
+                    Eliminar
+                </a>
             </div>
             {% endif %}
         </div>

@@ -9,6 +9,7 @@ from app.database import get_db
 from app.models.featured import FeaturedItem
 from app.models.album import Album
 from app.models.concert import Concert
+from app.models.hifi_bar import HifiBar
 from app.models.user import User
 from app.auth import get_current_user
 
@@ -26,16 +27,18 @@ def _load_featured(db: Session, user_id: int):
     rows = db.query(FeaturedItem).filter(FeaturedItem.user_id == user_id).all()
     albums   = {}
     concerts = {}
+    bars     = {}
     for row in rows:
         if row.type == "album":
-            album = db.query(Album).filter(Album.id == row.item_id).first()
-            if album:
-                albums[row.slot] = album
+            obj = db.query(Album).filter(Album.id == row.item_id).first()
+            if obj: albums[row.slot] = obj
         elif row.type == "concert":
-            concert = db.query(Concert).filter(Concert.id == row.item_id).first()
-            if concert:
-                concerts[row.slot] = concert
-    return albums, concerts
+            obj = db.query(Concert).filter(Concert.id == row.item_id).first()
+            if obj: concerts[row.slot] = obj
+        elif row.type == "bar":
+            obj = db.query(HifiBar).filter(HifiBar.id == row.item_id).first()
+            if obj: bars[row.slot] = obj
+    return albums, concerts, bars
 
 
 # ── Perfil publico por usuario ────────────────────────────
@@ -95,17 +98,20 @@ async def perfil_select_favorites(request: Request, db: Session = Depends(get_db
     if not username:
         return RedirectResponse(url="/login", status_code=302)
     user_obj = _get_user_obj(db, username)
-    albums, concerts = _load_featured(db, user_obj.id)
+    albums, concerts, bars = _load_featured(db, user_obj.id)
     all_albums   = db.query(Album).order_by(Album.artist, Album.title).all()
     all_concerts = db.query(Concert).order_by(Concert.date.desc()).all()
+    all_bars     = db.query(HifiBar).order_by(HifiBar.name).all()
     return templates.TemplateResponse("perfil_edit_favorites.html", {
         "request":      request,
         "user":         username,
         "profile":      user_obj,
         "albums":       albums,
         "concerts":     concerts,
+        "bars":         bars,
         "all_albums":   all_albums,
         "all_concerts": all_concerts,
+        "all_bars":     all_bars,
     })
 
 
@@ -129,6 +135,11 @@ async def perfil_save_favorites(request: Request, db: Session = Depends(get_db))
         if val:
             db.add(FeaturedItem(user_id=user_obj.id, type="concert", item_id=int(val), slot=slot))
 
+    for slot in range(1, 4):
+        val = form.get(f"bar_{slot}", "").strip()
+        if val:
+            db.add(FeaturedItem(user_id=user_obj.id, type="bar", item_id=int(val), slot=slot))
+
     db.commit()
     return RedirectResponse(url=f"/perfil/{username}", status_code=303)
 
@@ -139,13 +150,14 @@ async def perfil_usuario(username: str, request: Request, db: Session = Depends(
     profile = _get_user_obj(db, username)
     if not profile:
         return RedirectResponse(url="/perfil", status_code=302)
-    albums, concerts = _load_featured(db, profile.id)
+    albums, concerts, bars = _load_featured(db, profile.id)
     return templates.TemplateResponse("perfil_user.html", {
         "request":      request,
         "user":         current_user,
         "profile":      profile,
         "albums":       albums,
         "concerts":     concerts,
+        "bars":         bars,
         "emojis":       EMOJIS,
         "is_own":       current_user == username,
     })
@@ -175,7 +187,7 @@ async def perfil_toggle(
     if existing:
         db.delete(existing)
     else:
-        max_slot  = 5 if type == "album" else 3
+        max_slot  = 5 if type == "album" else 3  # concert=3, bar=3
         used_slots = {r.slot for r in db.query(FeaturedItem).filter(
             FeaturedItem.user_id == user_obj.id, FeaturedItem.type == type
         ).all()}

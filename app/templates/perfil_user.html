@@ -90,6 +90,41 @@
         {% endif %}
     </section>
 
+    <!-- Bares hifi favoritos -->
+    {% if bars or is_own %}
+    <section class="mb-12">
+        <p class="text-xs uppercase tracking-widest text-ink-400 mb-5">Bares hifi favoritos</p>
+        {% if bars %}
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {% for slot in range(1, 4) %}
+            {% if bars[slot] is defined %}
+            {% set bar = bars[slot] %}
+            <a href="/bares/{{ bar.id }}" class="group block bg-cream-100 border border-cream-200 rounded-2xl overflow-hidden hover:shadow-md transition-all hover:border-cream-300">
+                <div class="aspect-video bg-cream-200 overflow-hidden">
+                    {% if bar.cover_url %}
+                    <img src="{{ bar.cover_url }}" alt="{{ bar.name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    {% else %}
+                    <div class="w-full h-full flex items-center justify-center text-4xl">🎶</div>
+                    {% endif %}
+                </div>
+                <div class="p-3">
+                    <p class="font-serif font-600 text-ink-800 truncate leading-tight">{{ bar.name }}</p>
+                    {% if bar.city %}<p class="text-xs text-ink-400 mt-0.5">📍 {{ bar.city }}</p>{% endif %}
+                    <p class="text-xs text-ink-300 mt-1">{{ bar.visits|length }} visita{% if bar.visits|length != 1 %}s{% endif %}</p>
+                </div>
+            </a>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-ink-300 py-4 text-center">
+            Todavia no hay bares favoritos.
+            {% if is_own %}<a href="/perfil/seleccionar-favoritos" class="underline ml-1">Agregar</a>{% endif %}
+        </p>
+        {% endif %}
+    </section>
+    {% endif %}
+
     <!-- Recitales favoritos -->
     <section>
         <p class="text-xs uppercase tracking-widest text-ink-400 mb-5">Recitales favoritos</p>

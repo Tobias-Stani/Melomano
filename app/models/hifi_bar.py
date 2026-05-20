@@ -15,6 +15,7 @@ class HifiBar(Base):
     maps_url    = Column(Text, nullable=True)      # Google Maps share URL
     description = Column(Text, nullable=True)
     cover_url   = Column(Text, nullable=True)      # base64 o URL
+    banner_url  = Column(Text, nullable=True)      # imagen de fondo ancha (header)
     created_at  = Column(DateTime(timezone=True), server_default=func.now())
     updated_at  = Column(DateTime(timezone=True), onupdate=func.now())
 

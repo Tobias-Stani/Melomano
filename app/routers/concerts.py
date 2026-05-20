@@ -207,6 +207,22 @@ async def set_cover_photo(concert_id: int, photo_id: int, request: Request, db: 
     return RedirectResponse(url=f"/concerts/{concert_id}", status_code=303)
 
 
+@router.get("/concerts/{concert_id}/photos/{photo_id}/set-banner")
+async def set_banner_photo(concert_id: int, photo_id: int, request: Request, db: Session = Depends(get_db)):
+    if not get_current_user(request):
+        return RedirectResponse(url="/login", status_code=302)
+    photo = db.query(ConcertPhoto).filter(
+        ConcertPhoto.id == photo_id,
+        ConcertPhoto.concert_id == concert_id,
+        ConcertPhoto.deleted_at == None,
+    ).first()
+    concert = db.query(Concert).filter(Concert.id == concert_id).first()
+    if photo and concert:
+        concert.banner_url = f"data:{photo.mime_type};base64,{photo.data}"
+        db.commit()
+    return RedirectResponse(url=f"/concerts/{concert_id}", status_code=303)
+
+
 @router.get("/concerts/{concert_id}/photos/{photo_id}/delete")
 async def delete_photo(concert_id: int, photo_id: int, request: Request, db: Session = Depends(get_db)):
     if not get_current_user(request):

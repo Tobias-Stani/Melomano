@@ -36,3 +36,4 @@ class Album(Base):
     created_at      = Column(DateTime(timezone=True), server_default=func.now())
     updated_at      = Column(DateTime(timezone=True), onupdate=func.now())
     synced_at       = Column(DateTime(timezone=True), nullable=True)  # ultima sync con discogs
+    deleted_at      = Column(DateTime(timezone=True), nullable=True)

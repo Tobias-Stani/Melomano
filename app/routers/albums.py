@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -20,7 +21,7 @@ async def gallery(request: Request, q: str = None, filter: str = "all", db: Sess
     user  = get_current_user(request)
     if not user:
         return RedirectResponse(url="/perfil", status_code=302)
-    query = db.query(Album)
+    query = db.query(Album).filter(Album.deleted_at == None)
 
     if q:
         query = query.filter(or_(Album.title.ilike(f"%{q}%"), Album.artist.ilike(f"%{q}%")))
@@ -33,7 +34,7 @@ async def gallery(request: Request, q: str = None, filter: str = "all", db: Sess
         query = query.filter(Album.wishlist == True)
 
     albums = query.order_by(Album.artist, Album.year).all()
-    total  = db.query(Album).count()
+    total  = db.query(Album).filter(Album.deleted_at == None).count()
 
     return templates.TemplateResponse("gallery.html", {
         "request": request,
@@ -48,7 +49,7 @@ async def gallery(request: Request, q: str = None, filter: str = "all", db: Sess
 @router.get("/album/{album_id}", response_class=HTMLResponse)
 async def album_detail(album_id: int, request: Request, db: Session = Depends(get_db)):
     user  = get_current_user(request)
-    album = db.query(Album).filter(Album.id == album_id).first()
+    album = db.query(Album).filter(Album.id == album_id, Album.deleted_at == None).first()
     if not album:
         raise HTTPException(status_code=404, detail="Album no encontrado")
     is_featured = db.query(FeaturedItem).filter(
@@ -87,9 +88,9 @@ async def save_review(
 async def delete_album(album_id: int, request: Request, db: Session = Depends(get_db)):
     if not get_current_user(request):
         return RedirectResponse(url="/login", status_code=302)
-    album = db.query(Album).filter(Album.id == album_id).first()
+    album = db.query(Album).filter(Album.id == album_id, Album.deleted_at == None).first()
     if album:
-        db.delete(album)
+        album.deleted_at = datetime.now(timezone.utc)
         db.commit()
     return RedirectResponse(url="/", status_code=303)
 
@@ -146,7 +147,7 @@ async def add_album_manually(
 
     # Verificar si ya existe
     if discogs_id:
-        existing = db.query(Album).filter(Album.discogs_id == discogs_id).first()
+        existing = db.query(Album).filter(Album.discogs_id == discogs_id, Album.deleted_at == None).first()
         if existing:
             return RedirectResponse(url=f"/album/{existing.id}", status_code=303)
 

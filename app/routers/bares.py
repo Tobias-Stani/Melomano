@@ -12,6 +12,7 @@ from app.database import get_db
 from app.models.hifi_bar import HifiBar
 from app.models.bar_visit import BarVisit
 from app.models.bar_photo import BarPhoto
+from app.models.featured import FeaturedItem
 from app.auth import get_current_user
 
 router    = APIRouter()
@@ -93,6 +94,9 @@ async def bar_detail(bar_id: int, request: Request, db: Session = Depends(get_db
     if not bar:
         raise HTTPException(status_code=404)
     active_photos = [p for p in bar.photos if p.deleted_at is None]
+    is_featured   = bool(user and db.query(FeaturedItem).filter(
+        FeaturedItem.type == "bar", FeaturedItem.item_id == bar_id
+    ).first())
     return templates.TemplateResponse("bar_detail.html", {
         "request":       request,
         "user":          user,
@@ -101,6 +105,7 @@ async def bar_detail(bar_id: int, request: Request, db: Session = Depends(get_db
         "emojis":        EMOJIS,
         "maps_embed":    _maps_embed(bar),
         "today":         datetime.date.today().isoformat(),
+        "is_featured":   is_featured,
     })
 
 
@@ -222,6 +227,18 @@ async def photo_set_cover(bar_id: int, photo_id: int, request: Request, db: Sess
     bar   = db.query(HifiBar).filter(HifiBar.id == bar_id).first()
     if photo and bar:
         bar.cover_url = f"data:{photo.mime_type};base64,{photo.data}"
+        db.commit()
+    return RedirectResponse(url=f"/bares/{bar_id}", status_code=303)
+
+
+@router.get("/bares/{bar_id}/fotos/{photo_id}/set-banner")
+async def photo_set_banner(bar_id: int, photo_id: int, request: Request, db: Session = Depends(get_db)):
+    if not get_current_user(request):
+        return RedirectResponse(url="/login", status_code=302)
+    photo = db.query(BarPhoto).filter(BarPhoto.id == photo_id, BarPhoto.bar_id == bar_id, BarPhoto.deleted_at == None).first()
+    bar   = db.query(HifiBar).filter(HifiBar.id == bar_id).first()
+    if photo and bar:
+        bar.banner_url = f"data:{photo.mime_type};base64,{photo.data}"
         db.commit()
     return RedirectResponse(url=f"/bares/{bar_id}", status_code=303)
 

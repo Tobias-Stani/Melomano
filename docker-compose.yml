@@ -23,6 +23,8 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
+    volumes:
+      - ./app:/app/app
 
 volumes:
   postgres_data:

@@ -2,21 +2,69 @@
 {% block title %}{{ bar.name }} — Melomano{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto">
-    <a href="/bares" class="inline-flex items-center gap-1.5 text-sm text-ink-400 hover:text-ink-700 mb-6 transition-all">
+
+<!-- Banner full-width -->
+<div class="relative -mx-6 -mt-8" style="height:280px">
+    {% if bar.banner_url %}
+    <img src="{{ bar.banner_url }}" alt="Banner {{ bar.name }}"
+        class="w-full h-full object-cover" />
+    <div class="absolute inset-0 bg-gradient-to-b from-black/20 to-transparent"></div>
+    <a href="/bares" class="absolute top-4 left-4 inline-flex items-center gap-1.5 text-sm text-white/90 hover:text-white transition-all bg-black/25 hover:bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm">
         ← Volver a bares
     </a>
+    {% if user and active_photos %}
+    <button onclick="document.getElementById('bannerPicker').classList.toggle('hidden')"
+        class="absolute bottom-12 right-4 inline-flex items-center gap-1.5 text-xs text-white/80 hover:text-white bg-black/30 hover:bg-black/50 px-3 py-1.5 rounded-full backdrop-blur-sm transition-all">
+        🖼 Cambiar banner
+    </button>
+    {% endif %}
+    {% else %}
+    <div class="w-full h-full bg-cream-200 flex flex-col items-center justify-center gap-3">
+        {% if user and active_photos %}
+        <span class="text-4xl opacity-25">🖼</span>
+        <p class="text-ink-400 text-sm">Sin banner todavía</p>
+        <button onclick="document.getElementById('bannerPicker').classList.toggle('hidden')"
+            class="inline-flex items-center gap-2 bg-ink-800 text-cream-50 text-sm px-5 py-2 rounded-full hover:bg-ink-700 transition-all">
+            Elegir banner
+        </button>
+        {% elif user %}
+        <span class="text-4xl opacity-20">🖼</span>
+        <p class="text-ink-400 text-sm">Agregá fotos para poder elegir un banner</p>
+        {% endif %}
+    </div>
+    <a href="/bares" class="absolute top-4 left-4 inline-flex items-center gap-1.5 text-sm text-ink-500 hover:text-ink-800 transition-all bg-white/60 hover:bg-white/80 px-3 py-1.5 rounded-full">
+        ← Volver a bares
+    </a>
+    {% endif %}
+</div>
 
-    <!-- Header -->
-    <div class="flex gap-6 items-start flex-wrap md:flex-nowrap mb-8">
+<!-- Selector de banner -->
+{% if user and active_photos %}
+<div id="bannerPicker" class="hidden -mx-6 px-6 py-4 bg-cream-100 border-b border-cream-200 mb-4">
+    <p class="text-xs uppercase tracking-widest text-ink-400 mb-3">Elegí una foto como banner</p>
+    <div class="flex gap-2 overflow-x-auto pb-2">
+        {% for photo in active_photos %}
+        <a href="/bares/{{ bar.id }}/fotos/{{ photo.id }}/set-banner"
+            class="flex-shrink-0 w-32 h-20 rounded-xl overflow-hidden border-2 border-transparent hover:border-amber-400 transition-all">
+            <img src="data:{{ photo.mime_type }};base64,{{ photo.data }}" class="w-full h-full object-cover" />
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="max-w-3xl mx-auto">
+
+    <!-- Header integrado con el banner -->
+    <div class="flex gap-6 items-end flex-wrap md:flex-nowrap mb-8 -mt-20 relative z-10">
         {% if bar.cover_url %}
         <img src="{{ bar.cover_url }}" alt="{{ bar.name }}"
-            class="w-40 h-40 rounded-2xl object-cover shadow-md flex-shrink-0 bg-cream-200" />
+            class="w-40 h-40 rounded-2xl object-cover shadow-xl flex-shrink-0 bg-cream-200" style="ring:4px solid #f9f3e8; box-shadow:0 0 0 4px #f9f3e8,0 8px 24px rgba(0,0,0,.18)" />
         {% else %}
-        <div class="w-40 h-40 rounded-2xl bg-cream-200 flex items-center justify-center text-5xl flex-shrink-0">🎶</div>
+        <div class="w-40 h-40 rounded-2xl bg-cream-200 flex items-center justify-center text-5xl flex-shrink-0 shadow-xl" style="box-shadow:0 0 0 4px #f9f3e8,0 8px 24px rgba(0,0,0,.12)">🎶</div>
         {% endif %}
 
-        <div class="flex-1">
+        <div class="flex-1 pb-1">
             <h1 class="font-serif text-3xl font-700 text-ink-800 tracking-tight leading-tight mb-1">{{ bar.name }}</h1>
             {% if bar.city or bar.country %}
             <p class="text-ink-500 text-sm mb-1">
@@ -134,6 +182,11 @@
         <p class="text-xs uppercase tracking-widest text-ink-400 mb-4">Fotos</p>
 
         {% if active_photos %}
+        {% if user %}
+        <div class="flex items-center gap-2 mb-3">
+            <p class="text-xs text-ink-400 italic">Clickeá una foto para verla · mantené presionado para opciones</p>
+        </div>
+        {% endif %}
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
             {% for photo in active_photos %}
             <div class="relative group rounded-xl overflow-hidden aspect-square bg-cream-200">
@@ -148,14 +201,39 @@
                 <div class="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all">
                     <a href="/bares/{{ bar.id }}/fotos/{{ photo.id }}/set-cover" title="Usar como portada"
                         class="bg-black/60 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center hover:bg-amber-500">★</a>
+                    <a href="/bares/{{ bar.id }}/fotos/{{ photo.id }}/set-banner" title="Usar como banner de fondo"
+                        class="bg-black/60 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center hover:bg-sky-500">🖼</a>
                     <a href="/bares/{{ bar.id }}/fotos/{{ photo.id }}/delete"
                         onclick="return confirm('Eliminar foto?')" title="Eliminar"
                         class="bg-black/60 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600">&times;</a>
                 </div>
+                {% if bar.cover_url and bar.cover_url == 'data:' ~ photo.mime_type ~ ';base64,' ~ photo.data[:20] %}
+                <div class="absolute bottom-0 left-0 right-0 bg-amber-500/80 text-white text-xs text-center py-0.5 font-500">portada</div>
+                {% endif %}
                 {% endif %}
             </div>
             {% endfor %}
         </div>
+
+        {% if user %}
+        <!-- Selector de portada -->
+        <details class="bg-cream-100 border border-cream-200 rounded-2xl overflow-hidden mb-5">
+            <summary class="px-4 py-3 text-xs uppercase tracking-widest text-ink-400 cursor-pointer hover:bg-cream-200 transition-all list-none flex items-center gap-2">
+                ★ Elegir foto de portada
+            </summary>
+            <div class="px-4 pb-4 pt-2 border-t border-cream-200">
+                <p class="text-xs text-ink-400 mb-3">Seleccioná cuál foto querés usar como portada del bar.</p>
+                <div class="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                    {% for photo in active_photos %}
+                    <a href="/bares/{{ bar.id }}/fotos/{{ photo.id }}/set-cover"
+                        class="block aspect-square rounded-lg overflow-hidden bg-cream-200 border-2 border-transparent hover:border-amber-400 transition-all">
+                        <img src="data:{{ photo.mime_type }};base64,{{ photo.data }}" class="w-full h-full object-cover" />
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </details>
+        {% endif %}
         {% else %}
         <p class="text-sm text-ink-300 mb-5">Todavia no hay fotos de este bar.</p>
         {% endif %}
@@ -175,11 +253,21 @@
     </section>
 
     {% if user %}
-    <div class="flex gap-3 pt-6 border-t border-cream-200">
+    <div class="flex gap-3 pt-6 border-t border-cream-200 flex-wrap">
         <a href="/bares/{{ bar.id }}/editar"
             class="px-5 py-2.5 bg-ink-800 text-cream-50 rounded-xl text-sm hover:bg-ink-700 transition-all">
             Editar
         </a>
+        <form action="/perfil/toggle" method="POST">
+            <input type="hidden" name="type" value="bar" />
+            <input type="hidden" name="item_id" value="{{ bar.id }}" />
+            <input type="hidden" name="redirect_to" value="/bares/{{ bar.id }}" />
+            <button type="submit"
+                class="px-5 py-2.5 border rounded-xl text-sm transition-all
+                {% if is_featured %}bg-amber-100 border-amber-300 text-amber-700 hover:bg-amber-200{% else %}border-cream-300 text-ink-400 hover:border-amber-300 hover:text-amber-600{% endif %}">
+                ★ {% if is_featured %}En perfil{% else %}Agregar al perfil{% endif %}
+            </button>
+        </form>
         <a href="/bares/{{ bar.id }}/delete" onclick="return confirm('Eliminar este bar?')"
             class="px-5 py-2.5 border border-cream-300 text-ink-400 rounded-xl text-sm hover:border-red-300 hover:text-red-400 transition-all">
             Eliminar

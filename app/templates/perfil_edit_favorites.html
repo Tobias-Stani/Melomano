@@ -52,6 +52,27 @@
             </div>
         </section>
 
+        <section>
+            <p class="text-xs uppercase tracking-widest text-ink-400 mb-4">Bares hifi favoritos (hasta 3)</p>
+            <div class="space-y-3">
+                {% for slot in range(1, 4) %}
+                <div class="flex items-center gap-3">
+                    <span class="text-xs font-600 text-ink-400 w-4 text-right flex-shrink-0">{{ slot }}</span>
+                    <select name="bar_{{ slot }}"
+                        class="flex-1 bg-white border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400">
+                        <option value="">— Sin seleccionar —</option>
+                        {% for bar in all_bars %}
+                        <option value="{{ bar.id }}"
+                            {% if bars[slot] is defined and bars[slot].id == bar.id %}selected{% endif %}>
+                            {{ bar.name }}{% if bar.city %} — {{ bar.city }}{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
         <div class="flex gap-3">
             <button type="submit"
                 class="px-6 py-2.5 bg-ink-800 text-cream-50 rounded-xl text-sm font-600 hover:bg-ink-700 transition-all">
