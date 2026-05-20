@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, Date, DateTime
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
 
@@ -24,3 +25,6 @@ class Concert(Base):
 
     created_at  = Column(DateTime(timezone=True), server_default=func.now())
     updated_at  = Column(DateTime(timezone=True), onupdate=func.now())
+
+    photos = relationship("ConcertPhoto", back_populates="concert",
+                          cascade="all, delete-orphan", order_by="ConcertPhoto.created_at")

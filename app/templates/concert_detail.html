@@ -61,6 +61,65 @@
     </div>
     {% endif %}
 
+    <!-- Galeria de fotos -->
+    <div id="fotos" class="mt-8 pt-6 border-t border-cream-200">
+        <p class="text-xs uppercase tracking-widest text-ink-400 mb-4">Fotos del recital</p>
+
+        {% set active_photos = concert.photos | selectattr('deleted_at', 'none') | list %}
+        {% if active_photos %}
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+            {% for photo in active_photos %}
+            <div class="relative group rounded-xl overflow-hidden aspect-square bg-cream-200">
+                <img src="data:{{ photo.mime_type }};base64,{{ photo.data }}"
+                    alt="{{ photo.caption or 'Foto del recital' }}"
+                    class="w-full h-full object-cover cursor-pointer transition-transform group-hover:scale-105"
+                    onclick="openLightbox('data:{{ photo.mime_type }};base64,{{ photo.data }}', '{{ photo.caption or '' }}')" />
+                {% if photo.caption %}
+                <div class="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs px-2 py-1 truncate">
+                    {{ photo.caption }}
+                </div>
+                {% endif %}
+                {% if user %}
+                <div class="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <a href="/concerts/{{ concert.id }}/photos/{{ photo.id }}/set-cover"
+                        title="Usar como portada"
+                        class="bg-black/60 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center hover:bg-amber-500">
+                        ★
+                    </a>
+                    <a href="/concerts/{{ concert.id }}/photos/{{ photo.id }}/delete"
+                        onclick="return confirm('Eliminar esta foto?')"
+                        title="Eliminar foto"
+                        class="bg-black/60 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600">
+                        &times;
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-ink-300 mb-6">Todavia no hay fotos para este recital.</p>
+        {% endif %}  {# active_photos #}
+
+        {% if user %}
+        <form action="/concerts/{{ concert.id }}/photos" method="POST" enctype="multipart/form-data"
+            class="bg-cream-100 border border-cream-200 rounded-2xl p-4">
+            <p class="text-xs uppercase tracking-widest text-ink-400 mb-3">Subir fotos</p>
+            <div class="space-y-3">
+                <div>
+                    <input type="file" name="photos" multiple accept="image/*"
+                        class="w-full text-sm text-ink-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-ink-800 file:text-cream-50 file:text-xs file:cursor-pointer hover:file:bg-ink-700" />
+                    <p class="text-xs text-ink-300 mt-1">Podés seleccionar varias fotos a la vez.</p>
+                </div>
+                <button type="submit"
+                    class="px-5 py-2 bg-ink-800 text-cream-50 rounded-xl text-sm hover:bg-ink-700 transition-all">
+                    Subir
+                </button>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+
     {% if user %}
     <div class="flex gap-3 mt-8 pt-6 border-t border-cream-200">
         <a href="/concerts/{{ concert.id }}/edit"
@@ -75,4 +134,27 @@
     </div>
     {% endif %}
 </div>
+
+<!-- Lightbox -->
+<div id="lightbox" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+    onclick="closeLightbox()">
+    <div class="relative max-w-4xl max-h-full">
+        <img id="lightboxImg" src="" alt="" class="max-w-full max-h-[85vh] rounded-xl object-contain shadow-2xl" />
+        <p id="lightboxCaption" class="text-center text-white text-sm mt-3 opacity-70"></p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openLightbox(src, caption) {
+    document.getElementById('lightboxImg').src = src;
+    document.getElementById('lightboxCaption').textContent = caption;
+    document.getElementById('lightbox').classList.remove('hidden');
+}
+function closeLightbox() {
+    document.getElementById('lightbox').classList.add('hidden');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+</script>
 {% endblock %}

@@ -98,19 +98,76 @@
             <button onclick="document.getElementById('addModal').classList.add('hidden')" class="text-ink-300 hover:text-ink-600 text-xl">&times;</button>
         </div>
 
-        <!-- Busqueda Discogs -->
-        <div class="mb-4">
-            <label class="block text-xs uppercase tracking-widest text-ink-400 mb-2">Buscar en Discogs</label>
-            <div class="flex gap-2">
+        <!-- Tabs -->
+        <div class="flex gap-1 mb-4 bg-cream-200 rounded-xl p-1">
+            <button id="tabDiscogs" onclick="switchTab('discogs')"
+                class="flex-1 py-1.5 rounded-lg text-xs font-600 transition-all bg-white text-ink-800 shadow-sm">
+                Buscar en Discogs
+            </button>
+            <button id="tabManual" onclick="switchTab('manual')"
+                class="flex-1 py-1.5 rounded-lg text-xs font-600 transition-all text-ink-400 hover:text-ink-600">
+                Carga manual
+            </button>
+        </div>
+
+        <!-- Panel Discogs -->
+        <div id="panelDiscogs">
+            <div class="flex gap-2 mb-4">
                 <input id="discogsSearch" type="text" placeholder="Artista o album..."
                     class="flex-1 bg-white border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
                 <button onclick="searchDiscogs()" class="px-4 py-2 bg-ink-800 text-cream-50 rounded-xl text-sm hover:bg-ink-700 transition-all">Buscar</button>
             </div>
+            <div id="discogsResults" class="space-y-2 max-h-64 overflow-y-auto"></div>
         </div>
 
-        <div id="discogsResults" class="space-y-2 max-h-64 overflow-y-auto mb-4"></div>
+        <!-- Panel Manual -->
+        <div id="panelManual" class="hidden">
+            <form action="/album/add" method="POST" class="space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="col-span-2">
+                        <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Artista *</label>
+                        <input type="text" name="artist" required placeholder="Ej: Pink Floyd"
+                            class="w-full bg-white border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Titulo *</label>
+                        <input type="text" name="title" required placeholder="Ej: The Wall"
+                            class="w-full bg-white border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+                    </div>
+                    <div>
+                        <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Año</label>
+                        <input type="number" name="year" placeholder="Ej: 1979" min="1900" max="2099"
+                            class="w-full bg-white border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+                    </div>
+                    <div>
+                        <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Formato</label>
+                        <input type="text" name="format_type" placeholder="Ej: Vinyl, CD"
+                            class="w-full bg-white border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+                    </div>
+                    <div>
+                        <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Genero</label>
+                        <input type="text" name="genre" placeholder="Ej: Rock"
+                            class="w-full bg-white border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+                    </div>
+                    <div>
+                        <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Sello</label>
+                        <input type="text" name="label" placeholder="Ej: Columbia"
+                            class="w-full bg-white border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">URL de portada</label>
+                        <input type="url" name="cover_url" placeholder="https://..."
+                            class="w-full bg-white border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+                    </div>
+                </div>
+                <button type="submit"
+                    class="w-full py-2.5 bg-ink-800 text-cream-50 rounded-xl text-sm font-600 hover:bg-ink-700 transition-all mt-2">
+                    Agregar disco
+                </button>
+            </form>
+        </div>
 
-        <!-- Form oculto para submit -->
+        <!-- Form oculto para submit Discogs -->
         <form id="addAlbumForm" action="/album/add" method="POST" class="hidden">
             <input type="hidden" name="discogs_id" id="f_discogs_id" />
             <input type="hidden" name="title" id="f_title" />
@@ -129,6 +186,18 @@
 {% block scripts %}
 {% if user %}
 <script>
+function switchTab(tab) {
+    const isDiscogs = tab === 'discogs';
+    document.getElementById('panelDiscogs').classList.toggle('hidden', !isDiscogs);
+    document.getElementById('panelManual').classList.toggle('hidden', isDiscogs);
+    document.getElementById('tabDiscogs').className = isDiscogs
+        ? 'flex-1 py-1.5 rounded-lg text-xs font-600 transition-all bg-white text-ink-800 shadow-sm'
+        : 'flex-1 py-1.5 rounded-lg text-xs font-600 transition-all text-ink-400 hover:text-ink-600';
+    document.getElementById('tabManual').className = isDiscogs
+        ? 'flex-1 py-1.5 rounded-lg text-xs font-600 transition-all text-ink-400 hover:text-ink-600'
+        : 'flex-1 py-1.5 rounded-lg text-xs font-600 transition-all bg-white text-ink-800 shadow-sm';
+}
+
 async function searchDiscogs() {
     const q   = document.getElementById('discogsSearch').value.trim();
     const box = document.getElementById('discogsResults');

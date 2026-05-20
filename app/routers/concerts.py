@@ -1,12 +1,15 @@
-from fastapi import APIRouter, Depends, Request, Form, HTTPException
+import base64
+import datetime
+
+from fastapi import APIRouter, Depends, Request, Form, HTTPException, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
-import datetime
 
 from app.database import get_db
 from app.models.concert import Concert
+from app.models.concert_photo import ConcertPhoto
 from app.auth import get_current_user
 
 router    = APIRouter()
@@ -144,3 +147,68 @@ async def concert_delete(concert_id: int, request: Request, db: Session = Depend
         db.delete(concert)
         db.commit()
     return RedirectResponse(url="/concerts", status_code=303)
+
+
+# ── Fotos ─────────────────────────────────────────────────
+
+@router.post("/concerts/{concert_id}/photos")
+async def upload_photos(
+    concert_id: int,
+    request: Request,
+    photos: list[UploadFile] = File(...),
+    captions: list[str] = Form(default=[]),
+    db: Session = Depends(get_db),
+):
+    if not get_current_user(request):
+        return RedirectResponse(url="/login", status_code=302)
+    concert = db.query(Concert).filter(Concert.id == concert_id).first()
+    if not concert:
+        raise HTTPException(status_code=404)
+
+    for i, photo in enumerate(photos):
+        raw = await photo.read()
+        if not raw:
+            continue
+        encoded = base64.b64encode(raw).decode("utf-8")
+        caption = captions[i] if i < len(captions) else None
+        db.add(ConcertPhoto(
+            concert_id=concert_id,
+            data=encoded,
+            mime_type=photo.content_type or "image/jpeg",
+            caption=caption or None,
+        ))
+
+    db.commit()
+    return RedirectResponse(url=f"/concerts/{concert_id}#fotos", status_code=303)
+
+
+@router.get("/concerts/{concert_id}/photos/{photo_id}/set-cover")
+async def set_cover_photo(concert_id: int, photo_id: int, request: Request, db: Session = Depends(get_db)):
+    if not get_current_user(request):
+        return RedirectResponse(url="/login", status_code=302)
+    photo = db.query(ConcertPhoto).filter(
+        ConcertPhoto.id == photo_id,
+        ConcertPhoto.concert_id == concert_id,
+        ConcertPhoto.deleted_at == None,
+    ).first()
+    concert = db.query(Concert).filter(Concert.id == concert_id).first()
+    if photo and concert:
+        concert.cover_url = f"data:{photo.mime_type};base64,{photo.data}"
+        db.commit()
+    return RedirectResponse(url=f"/concerts/{concert_id}", status_code=303)
+
+
+@router.get("/concerts/{concert_id}/photos/{photo_id}/delete")
+async def delete_photo(concert_id: int, photo_id: int, request: Request, db: Session = Depends(get_db)):
+    if not get_current_user(request):
+        return RedirectResponse(url="/login", status_code=302)
+    photo = db.query(ConcertPhoto).filter(
+        ConcertPhoto.id == photo_id,
+        ConcertPhoto.concert_id == concert_id,
+        ConcertPhoto.deleted_at == None,
+    ).first()
+    if photo:
+        from datetime import datetime, timezone
+        photo.deleted_at = datetime.now(timezone.utc)
+        db.commit()
+    return RedirectResponse(url=f"/concerts/{concert_id}#fotos", status_code=303)

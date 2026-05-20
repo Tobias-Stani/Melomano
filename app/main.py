@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from app.database import engine, Base
 from app.routers import auth, albums, concerts
+from app.models import concert_photo  # noqa: F401 — registers table with Base
 
 
 @asynccontextmanager
