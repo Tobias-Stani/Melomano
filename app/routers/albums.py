@@ -18,6 +18,8 @@ templates = Jinja2Templates(directory="app/templates")
 @router.get("/", response_class=HTMLResponse)
 async def gallery(request: Request, q: str = None, filter: str = "all", db: Session = Depends(get_db)):
     user  = get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/perfil", status_code=302)
     query = db.query(Album)
 
     if q:

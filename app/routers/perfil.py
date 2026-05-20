@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Request, Form
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
@@ -60,6 +60,25 @@ async def perfil_edit(request: Request, db: Session = Depends(get_db)):
         "all_albums":   all_albums,
         "all_concerts": all_concerts,
     })
+
+
+@router.post("/perfil/reorder")
+async def perfil_reorder(request: Request, db: Session = Depends(get_db)):
+    if not get_current_user(request):
+        return JSONResponse({"error": "no autorizado"}, status_code=401)
+    body = await request.json()
+    type_    = body.get("type")       # 'album' | 'concert'
+    order    = body.get("order", [])  # lista de item_ids en nuevo orden
+    if type_ not in ("album", "concert"):
+        return JSONResponse({"error": "tipo invalido"}, status_code=400)
+
+    rows = db.query(FeaturedItem).filter(FeaturedItem.type == type_).all()
+    rows_by_id = {r.item_id: r for r in rows}
+    for slot, item_id in enumerate(order, start=1):
+        if item_id in rows_by_id:
+            rows_by_id[item_id].slot = slot
+    db.commit()
+    return JSONResponse({"ok": True})
 
 
 @router.post("/perfil/toggle")
