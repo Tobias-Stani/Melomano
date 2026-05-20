@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Usuarios — Melomano{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="flex items-center justify-between mb-8">
+        <h1 class="font-serif text-3xl font-700 text-ink-800 tracking-tight">Usuarios</h1>
+        <a href="/usuarios/nuevo"
+            class="px-4 py-2 rounded-xl text-sm font-500 bg-ink-800 text-cream-50 hover:bg-ink-700 transition-all">
+            + Nuevo usuario
+        </a>
+    </div>
+
+    <div class="space-y-3">
+        {% for u in users %}
+        <div class="flex items-center gap-4 p-4 bg-cream-100 border border-cream-200 rounded-2xl">
+            {% if u.avatar %}
+            <img src="{{ u.avatar }}" alt="{{ u.display_name or u.username }}"
+                class="w-10 h-10 rounded-full object-cover flex-shrink-0 border border-cream-200" />
+            {% else %}
+            <div class="w-10 h-10 rounded-full bg-cream-300 flex items-center justify-center text-lg flex-shrink-0">🎵</div>
+            {% endif %}
+            <div class="flex-1 min-w-0">
+                <p class="font-600 text-ink-800 text-sm">{{ u.display_name or u.username }}
+                    {% if u.is_admin %}<span class="ml-1 text-xs bg-ink-800 text-cream-50 px-1.5 py-0.5 rounded-full">admin</span>{% endif %}
+                </p>
+                <p class="text-xs text-ink-400">@{{ u.username }}</p>
+            </div>
+            <div class="flex gap-2">
+                <a href="/perfil/{{ u.username }}" class="text-xs text-ink-400 hover:text-ink-700 px-2 py-1 rounded-lg hover:bg-cream-200 transition-all">Ver perfil</a>
+                <a href="/usuarios/{{ u.username }}/editar" class="text-xs text-ink-400 hover:text-ink-700 px-2 py-1 rounded-lg hover:bg-cream-200 transition-all">Editar</a>
+                {% if u.username != user %}
+                <a href="/usuarios/{{ u.username }}/eliminar" onclick="return confirm('Eliminar usuario {{ u.username }}?')"
+                    class="text-xs text-ink-300 hover:text-red-400 px-2 py-1 rounded-lg hover:bg-red-50 transition-all">Eliminar</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

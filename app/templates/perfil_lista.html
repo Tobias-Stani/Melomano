@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Melomano — Perfiles{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <h1 class="font-serif text-3xl font-700 text-ink-800 tracking-tight mb-8">Perfiles</h1>
+    {% if users %}
+    <div class="space-y-3">
+        {% for u in users %}
+        <a href="/perfil/{{ u.username }}"
+            class="flex items-center gap-4 p-4 bg-cream-100 border border-cream-200 rounded-2xl hover:shadow-md hover:border-cream-300 transition-all">
+            {% if u.avatar %}
+            <img src="{{ u.avatar }}" alt="{{ u.display_name or u.username }}"
+                class="w-12 h-12 rounded-full object-cover flex-shrink-0 border border-cream-200" />
+            {% else %}
+            <div class="w-12 h-12 rounded-full bg-cream-300 flex items-center justify-center text-xl flex-shrink-0">🎵</div>
+            {% endif %}
+            <div class="min-w-0">
+                <p class="font-serif font-600 text-ink-800">{{ u.display_name or u.username }}</p>
+                <p class="text-xs text-ink-400">@{{ u.username }}</p>
+                {% if u.bio %}
+                <p class="text-xs text-ink-500 mt-1 truncate">{{ u.bio }}</p>
+                {% endif %}
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-ink-300 text-center py-12">No hay perfiles todavia.</p>
+    {% endif %}
+</div>
+{% endblock %}

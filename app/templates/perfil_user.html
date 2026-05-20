@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}{{ profile.display_name or profile.username }} — Melomano{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+
+    <!-- Header del perfil -->
+    <div class="flex items-start gap-6 mb-10 flex-wrap sm:flex-nowrap">
+        <!-- Avatar -->
+        <div class="flex-shrink-0">
+            {% if profile.avatar %}
+            <img src="{{ profile.avatar }}" alt="{{ profile.display_name or profile.username }}"
+                class="w-24 h-24 rounded-full object-cover shadow-md border-2 border-cream-200" />
+            {% else %}
+            <div class="w-24 h-24 rounded-full bg-cream-300 flex items-center justify-center text-3xl shadow-md">
+                🎵
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Info -->
+        <div class="flex-1 min-w-0">
+            <h1 class="font-serif text-3xl font-700 text-ink-800 tracking-tight leading-tight">
+                {{ profile.display_name or profile.username }}
+            </h1>
+            <p class="text-sm text-ink-400 mt-0.5">@{{ profile.username }}</p>
+            {% if profile.bio %}
+            <p class="text-sm text-ink-600 mt-3 leading-relaxed max-w-lg">{{ profile.bio }}</p>
+            {% endif %}
+        </div>
+
+        <!-- Acciones (solo si es el propio perfil) -->
+        {% if is_own %}
+        <div class="flex gap-2 flex-shrink-0 flex-wrap">
+            <a href="/perfil/editar"
+                class="px-4 py-2 rounded-xl text-sm font-500 border border-cream-300 text-ink-600 hover:bg-cream-200 transition-all">
+                Editar perfil
+            </a>
+            <a href="/perfil/seleccionar-favoritos"
+                class="px-4 py-2 rounded-xl text-sm font-500 border border-cream-300 text-ink-600 hover:bg-cream-200 transition-all">
+                Editar favoritos
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Discos favoritos -->
+    <section class="mb-12">
+        <div class="flex items-center gap-3 mb-5">
+            <p class="text-xs uppercase tracking-widest text-ink-400">Discos favoritos</p>
+            {% if is_own and albums %}
+            <span class="text-xs text-ink-300 italic">arrastrá para reordenar</span>
+            {% endif %}
+        </div>
+
+        {% if albums %}
+        <div id="albumsGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+            {% for slot in range(1, 6) %}
+            {% if albums[slot] is defined %}
+            {% set album = albums[slot] %}
+            <div data-id="{{ album.id }}" class="{% if is_own %}cursor-grab active:cursor-grabbing{% endif %} group block">
+                <a href="/album/{{ album.id }}" class="block">
+                    <div class="relative aspect-square rounded-xl overflow-hidden bg-cream-200 mb-2 shadow-sm group-hover:shadow-md transition-all group-hover:scale-[1.02]">
+                        {% if album.cover_url %}
+                        <img src="{{ album.cover_url }}" alt="{{ album.title }}" class="w-full h-full object-cover" loading="lazy"
+                            onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />
+                        <div class="hidden w-full h-full items-center justify-center text-4xl">🎵</div>
+                        {% else %}
+                        <div class="w-full h-full flex items-center justify-center text-4xl">🎵</div>
+                        {% endif %}
+                        {% if album.score %}
+                        <div class="absolute bottom-2 left-2 bg-black/60 text-white text-xs font-700 px-2 py-0.5 rounded-full font-serif">
+                            {{ album.score }}/10
+                        </div>
+                        {% endif %}
+                    </div>
+                    <p class="text-xs font-600 text-ink-700 truncate leading-tight">{{ album.title }}</p>
+                    <p class="text-xs text-ink-400 truncate">{{ album.artist }}</p>
+                    {% if album.year %}<p class="text-xs text-ink-300">{{ album.year }}</p>{% endif %}
+                </a>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-ink-300 py-8 text-center">
+            Todavia no hay discos favoritos.
+            {% if is_own %}<a href="/perfil/seleccionar-favoritos" class="underline ml-1">Agregar</a>{% endif %}
+        </p>
+        {% endif %}
+    </section>
+
+    <!-- Recitales favoritos -->
+    <section>
+        <p class="text-xs uppercase tracking-widest text-ink-400 mb-5">Recitales favoritos</p>
+        {% if concerts %}
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {% for slot in range(1, 4) %}
+            {% if concerts[slot] is defined %}
+            {% set concert = concerts[slot] %}
+            <a href="/concerts/{{ concert.id }}" class="group block bg-cream-100 border border-cream-200 rounded-2xl p-4 hover:shadow-md transition-all hover:border-cream-300">
+                <div class="flex gap-3 items-start">
+                    {% if concert.cover_url %}
+                    <img src="{{ concert.cover_url }}" alt="{{ concert.artist }}"
+                        class="w-14 h-14 rounded-xl object-cover flex-shrink-0 bg-cream-200" />
+                    {% else %}
+                    <div class="w-14 h-14 rounded-xl bg-cream-200 flex items-center justify-center text-2xl flex-shrink-0">🎤</div>
+                    {% endif %}
+                    <div class="min-w-0 flex-1">
+                        <p class="font-serif font-600 text-ink-800 truncate leading-tight">{{ concert.artist }}</p>
+                        <p class="text-xs text-ink-400 mt-0.5">{{ concert.date.strftime('%d/%m/%Y') }}</p>
+                        {% if concert.venue or concert.city %}
+                        <p class="text-xs text-ink-300 truncate">
+                            {% if concert.venue %}{{ concert.venue }}{% endif %}
+                            {% if concert.city %} &middot; {{ concert.city }}{% endif %}
+                        </p>
+                        {% endif %}
+                        {% if concert.score %}
+                        <p class="text-sm mt-1">{{ emojis[concert.score] }} <span class="text-xs text-ink-400 font-600">{{ concert.score }}/10</span></p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if concert.highlights %}
+                <p class="text-xs text-ink-500 italic mt-3 line-clamp-2 border-t border-cream-200 pt-2">{{ concert.highlights }}</p>
+                {% endif %}
+            </a>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-ink-300 py-8 text-center">
+            Todavia no hay recitales favoritos.
+            {% if is_own %}<a href="/perfil/seleccionar-favoritos" class="underline ml-1">Agregar</a>{% endif %}
+        </p>
+        {% endif %}
+    </section>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if is_own and albums %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+Sortable.create(document.getElementById('albumsGrid'), {
+    animation: 150,
+    ghostClass: 'opacity-40',
+    onEnd() {
+        const order = [...document.querySelectorAll('#albumsGrid [data-id]')]
+            .map(el => parseInt(el.dataset.id));
+        fetch('/perfil/reorder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'album', order }),
+        });
+    },
+});
+</script>
+{% endif %}
+{% endblock %}
