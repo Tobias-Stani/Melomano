@@ -10,6 +10,7 @@ from sqlalchemy import desc
 from app.database import get_db
 from app.models.concert import Concert
 from app.models.concert_photo import ConcertPhoto
+from app.models.featured import FeaturedItem
 from app.auth import get_current_user
 
 router    = APIRouter()
@@ -81,9 +82,13 @@ async def concert_detail(concert_id: int, request: Request, db: Session = Depend
     concert = db.query(Concert).filter(Concert.id == concert_id).first()
     if not concert:
         raise HTTPException(status_code=404)
+    is_featured = db.query(FeaturedItem).filter(
+        FeaturedItem.type == "concert", FeaturedItem.item_id == concert_id
+    ).first() is not None
     return templates.TemplateResponse("concert_detail.html", {
         "request": request, "user": user, "concert": concert,
         "emoji": EMOJIS.get(concert.score, "") if concert.score else "",
+        "is_featured": is_featured,
     })
 
 

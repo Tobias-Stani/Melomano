@@ -65,10 +65,22 @@
             {% endif %}
 
             {% if user %}
-            <button onclick="document.getElementById('reviewForm').classList.toggle('hidden')"
-                class="text-sm text-ink-400 underline underline-offset-2 hover:text-ink-700 transition-all">
-                {% if album.score %}Editar valoracion{% else %}Agregar valoracion{% endif %}
-            </button>
+            <div class="flex items-center gap-3 mt-2 flex-wrap">
+                <button onclick="document.getElementById('reviewForm').classList.toggle('hidden')"
+                    class="text-sm text-ink-400 underline underline-offset-2 hover:text-ink-700 transition-all">
+                    {% if album.score %}Editar valoracion{% else %}Agregar valoracion{% endif %}
+                </button>
+                <form action="/perfil/toggle" method="POST">
+                    <input type="hidden" name="type" value="album" />
+                    <input type="hidden" name="item_id" value="{{ album.id }}" />
+                    <input type="hidden" name="redirect_to" value="/album/{{ album.id }}" />
+                    <button type="submit"
+                        class="flex items-center gap-1.5 text-sm px-3 py-1 rounded-full border transition-all
+                        {% if is_featured %}bg-amber-100 border-amber-300 text-amber-700 hover:bg-amber-200{% else %}border-cream-300 text-ink-400 hover:border-amber-300 hover:text-amber-600{% endif %}">
+                        ★ {% if is_featured %}En perfil{% else %}Agregar al perfil{% endif %}
+                    </button>
+                </form>
+            </div>
             {% endif %}
         </div>
     </div>

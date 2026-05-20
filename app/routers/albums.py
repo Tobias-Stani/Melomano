@@ -7,6 +7,7 @@ from sqlalchemy import desc, or_
 
 from app.database import get_db
 from app.models.album import Album
+from app.models.featured import FeaturedItem
 from app.auth import get_current_user
 from app.services.discogs import sync_collection, search_discogs
 
@@ -48,7 +49,12 @@ async def album_detail(album_id: int, request: Request, db: Session = Depends(ge
     album = db.query(Album).filter(Album.id == album_id).first()
     if not album:
         raise HTTPException(status_code=404, detail="Album no encontrado")
-    return templates.TemplateResponse("album_detail.html", {"request": request, "user": user, "album": album})
+    is_featured = db.query(FeaturedItem).filter(
+        FeaturedItem.type == "album", FeaturedItem.item_id == album_id
+    ).first() is not None
+    return templates.TemplateResponse("album_detail.html", {
+        "request": request, "user": user, "album": album, "is_featured": is_featured,
+    })
 
 
 @router.post("/album/{album_id}/review")
