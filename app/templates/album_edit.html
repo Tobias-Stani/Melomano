@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Editar — {{ album.artist }} — {{ album.title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+
+    <a href="/album/{{ album.id }}" class="inline-flex items-center gap-1.5 text-sm text-ink-400 hover:text-ink-700 mb-6 transition-all">
+        ← Volver al album
+    </a>
+
+    <h1 class="font-serif text-3xl font-700 text-ink-800 tracking-tight mb-8">Editar disco</h1>
+
+    <form action="/album/{{ album.id }}/edit" method="POST" class="space-y-5">
+
+        <!-- Artista y Titulo -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs uppercase tracking-widest text-ink-400 mb-2">Artista *</label>
+                <input type="text" name="artist" required value="{{ album.artist }}"
+                    class="w-full bg-white border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+            </div>
+            <div>
+                <label class="block text-xs uppercase tracking-widest text-ink-400 mb-2">Año</label>
+                <input type="number" name="year" value="{{ album.year or '' }}" min="1900" max="2099"
+                    class="w-full bg-white border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+            </div>
+        </div>
+
+        <div>
+            <label class="block text-xs uppercase tracking-widest text-ink-400 mb-2">Titulo *</label>
+            <input type="text" name="title" required value="{{ album.title }}"
+                class="w-full bg-white border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+        </div>
+
+        <!-- Genero, Sello, Formato -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-xs uppercase tracking-widest text-ink-400 mb-2">Genero</label>
+                <input type="text" name="genre" value="{{ album.genre or '' }}" placeholder="Ej: Rock"
+                    class="w-full bg-white border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+            </div>
+            <div>
+                <label class="block text-xs uppercase tracking-widest text-ink-400 mb-2">Sello</label>
+                <input type="text" name="label" value="{{ album.label or '' }}" placeholder="Ej: Columbia"
+                    class="w-full bg-white border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+            </div>
+            <div>
+                <label class="block text-xs uppercase tracking-widest text-ink-400 mb-2">Formato</label>
+                <select name="format_type"
+                    class="w-full bg-white border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400">
+                    <option value="">— Sin especificar —</option>
+                    {% for ft in format_types %}
+                    <option value="{{ ft.name }}" {% if album.format_type == ft.name %}selected{% endif %}>{{ ft.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- URL portada -->
+        <div>
+            <label class="block text-xs uppercase tracking-widest text-ink-400 mb-2">URL de portada</label>
+            <input type="url" name="cover_url" value="{{ album.cover_url or '' }}" placeholder="https://..."
+                class="w-full bg-white border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+        </div>
+
+        <hr class="border-cream-200" />
+
+        <!-- Estado -->
+        <div>
+            <p class="text-xs uppercase tracking-widest text-ink-400 mb-3">Estado</p>
+            <div class="flex gap-6 flex-wrap">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" name="owned" {% if album.owned %}checked{% endif %}
+                        class="rounded border-cream-300 text-ink-800 focus:ring-cream-400" />
+                    <span class="text-sm text-ink-600">💿 Lo tengo</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" name="listened" {% if album.listened %}checked{% endif %}
+                        class="rounded border-cream-300 text-ink-800 focus:ring-cream-400" />
+                    <span class="text-sm text-ink-600">✓ Lo escuche</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" name="wishlist" {% if album.wishlist %}checked{% endif %}
+                        class="rounded border-cream-300 text-ink-800 focus:ring-cream-400" />
+                    <span class="text-sm text-ink-600">🔖 Lo quiero</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Score -->
+        <div>
+            <label class="block text-xs uppercase tracking-widest text-ink-400 mb-3">
+                Nota: <span id="scoreVal" class="font-serif text-2xl font-700 text-ink-800 ml-2">{{ album.score or 5 }}</span>/10
+            </label>
+            <input type="range" name="score" id="scoreRange" min="1" max="10" value="{{ album.score or 5 }}"
+                class="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+                style="-webkit-appearance:none;background:#e4ceac;"
+                oninput="document.getElementById('scoreVal').textContent=this.value" />
+        </div>
+
+        <!-- Resena -->
+        <div>
+            <label class="block text-xs uppercase tracking-widest text-ink-400 mb-2">Resena personal</label>
+            <textarea name="review" rows="3" placeholder="Que te parece este disco..."
+                class="w-full bg-white border border-cream-200 rounded-xl px-4 py-3 text-ink-800 text-sm focus:outline-none focus:ring-2 focus:ring-cream-400 resize-none">{{ album.review or '' }}</textarea>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+            <button type="submit"
+                class="px-8 py-2.5 bg-ink-800 text-cream-50 rounded-xl text-sm font-600 hover:bg-ink-700 transition-all">
+                Guardar cambios
+            </button>
+            <a href="/album/{{ album.id }}"
+                class="px-6 py-2.5 border border-cream-300 text-ink-400 rounded-xl text-sm hover:bg-cream-200 transition-all">
+                Cancelar
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

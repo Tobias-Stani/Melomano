@@ -5,11 +5,12 @@ from contextlib import asynccontextmanager
 
 from app.database import engine, Base, SessionLocal
 from app.routers import auth, albums, concerts
-from app.routers import perfil, users, bares
+from app.routers import perfil, users, bares, formatos
 from app.models import concert_photo  # noqa: F401
 from app.models import featured       # noqa: F401
 from app.models import user as user_model  # noqa: F401
 from app.models import hifi_bar, bar_visit, bar_photo  # noqa: F401
+from app.models import format_type    # noqa: F401
 from app.models.user import User
 from app.models.featured import FeaturedItem
 from app.auth import hash_password
@@ -57,3 +58,4 @@ app.include_router(concerts.router)
 app.include_router(perfil.router)
 app.include_router(users.router)
 app.include_router(bares.router)
+app.include_router(formatos.router)

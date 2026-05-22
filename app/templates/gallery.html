@@ -2,14 +2,17 @@
 {% block title %}Melomano — Coleccion{% endblock %}
 
 {% block content %}
-<div class="flex items-start justify-between mb-8 gap-4 flex-wrap">
+<div class="flex items-start justify-between mb-6 gap-4 flex-wrap">
     <div>
         <h1 class="font-serif text-3xl font-700 text-ink-800 tracking-tight">Mi Coleccion</h1>
         <p class="text-ink-400 text-sm mt-1">{{ total }} discos registrados</p>
     </div>
     <div class="flex items-center gap-2 flex-wrap">
         {% if user %}
-        <!-- Busqueda Discogs -->
+        <button onclick="document.getElementById('statsPanel').classList.toggle('hidden')"
+            class="px-4 py-2 rounded-xl text-sm font-500 border border-cream-300 text-ink-600 hover:bg-cream-200 transition-all">
+            📊 Estadísticas
+        </button>
         <button onclick="document.getElementById('addModal').classList.remove('hidden')"
             class="px-4 py-2 rounded-xl text-sm font-500 bg-ink-800 text-cream-50 hover:bg-ink-700 transition-all">
             + Agregar disco
@@ -23,23 +26,104 @@
     </div>
 </div>
 
+<!-- Panel de estadísticas -->
+<div id="statsPanel" class="hidden mb-6 bg-cream-100 border border-cream-200 rounded-2xl p-5">
+    <p class="text-xs uppercase tracking-widest text-ink-400 mb-4">Estadísticas de la colección</p>
+
+    <!-- Totales rápidos -->
+    <div class="grid grid-cols-3 gap-3 mb-5">
+        <div class="bg-white rounded-xl p-3 text-center border border-cream-200">
+            <p class="font-serif text-2xl font-700 text-ink-800">{{ stats.owned }}</p>
+            <p class="text-xs text-ink-400 mt-0.5">En colección</p>
+        </div>
+        <div class="bg-white rounded-xl p-3 text-center border border-cream-200">
+            <p class="font-serif text-2xl font-700 text-ink-800">{{ stats.listened }}</p>
+            <p class="text-xs text-ink-400 mt-0.5">Escuchados</p>
+        </div>
+        <div class="bg-white rounded-xl p-3 text-center border border-cream-200">
+            <p class="font-serif text-2xl font-700 text-ink-800">{{ stats.wishlist }}</p>
+            <p class="text-xs text-ink-400 mt-0.5">Wishlist</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <!-- Por formato -->
+        {% if fmt_counts %}
+        <div>
+            <p class="text-xs uppercase tracking-widest text-ink-400 mb-3">Por formato</p>
+            <div class="space-y-2">
+                {% for f, count in fmt_counts.items() %}
+                <div class="flex items-center gap-2">
+                    <div class="flex-1 bg-cream-200 rounded-full h-1.5 overflow-hidden">
+                        <div class="h-full bg-ink-700 rounded-full" style="width:{{ (count / total * 100)|round|int }}%"></div>
+                    </div>
+                    <span class="text-xs text-ink-500 w-16 truncate">{{ f }}</span>
+                    <span class="text-xs font-600 text-ink-700 w-6 text-right">{{ count }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Por género -->
+        {% if genre_counts %}
+        <div>
+            <p class="text-xs uppercase tracking-widest text-ink-400 mb-3">Por género (top 10)</p>
+            <div class="space-y-2">
+                {% set max_genre = genre_counts.values()|list|first %}
+                {% for genre, count in genre_counts.items() %}
+                <div class="flex items-center gap-2">
+                    <div class="flex-1 bg-cream-200 rounded-full h-1.5 overflow-hidden">
+                        <div class="h-full bg-amber-600 rounded-full" style="width:{{ (count / max_genre * 100)|round|int }}%"></div>
+                    </div>
+                    <span class="text-xs text-ink-500 w-24 truncate">{{ genre }}</span>
+                    <span class="text-xs font-600 text-ink-700 w-6 text-right">{{ count }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
 <!-- Filtros y busqueda -->
-<div class="flex items-center gap-3 mb-6 flex-wrap">
-    <form action="/" method="GET" class="flex gap-2 flex-1 min-w-[200px]">
-        <input type="text" name="q" value="{{ q }}" placeholder="Buscar artista o album..."
-            class="flex-1 bg-white border border-cream-200 rounded-xl px-4 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400 transition-all" />
-        <input type="hidden" name="filter" value="{{ filter }}" />
-        <button type="submit" class="px-4 py-2 bg-ink-800 text-cream-50 rounded-xl text-sm hover:bg-ink-700 transition-all">Buscar</button>
-    </form>
-    <div class="flex gap-1">
-        {% for f, label in [('all','Todos'),('owned','Coleccion'),('listened','Escuchados'),('wishlist','Wishlist')] %}
-        <a href="/?filter={{ f }}{% if q %}&q={{ q }}{% endif %}"
-            class="px-3 py-1.5 rounded-full text-xs font-500 transition-all
-            {% if filter == f %}bg-ink-800 text-cream-50{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200 border border-cream-200{% endif %}">
-            {{ label }}
+<div class="flex flex-col gap-3 mb-6">
+    <div class="flex items-center gap-3 flex-wrap">
+        <form action="/" method="GET" class="flex gap-2 flex-1 min-w-[200px]">
+            <input type="text" name="q" value="{{ q }}" placeholder="Buscar artista o album..."
+                class="flex-1 bg-white border border-cream-200 rounded-xl px-4 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400 transition-all" />
+            <input type="hidden" name="filter" value="{{ filter }}" />
+            <input type="hidden" name="fmt" value="{{ fmt }}" />
+            <button type="submit" class="px-4 py-2 bg-ink-800 text-cream-50 rounded-xl text-sm hover:bg-ink-700 transition-all">Buscar</button>
+        </form>
+        <div class="flex gap-1 flex-wrap">
+            {% for f, label in [('all','Todos'),('owned','Coleccion'),('listened','Escuchados'),('wishlist','Wishlist')] %}
+            <a href="/?filter={{ f }}{% if q %}&q={{ q }}{% endif %}{% if fmt %}&fmt={{ fmt }}{% endif %}"
+                class="px-3 py-1.5 rounded-full text-xs font-500 transition-all
+                {% if filter == f %}bg-ink-800 text-cream-50{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200 border border-cream-200{% endif %}">
+                {{ label }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Filtros por formato -->
+    {% if formats %}
+    <div class="flex gap-1.5 flex-wrap">
+        <a href="/?filter={{ filter }}{% if q %}&q={{ q }}{% endif %}"
+            class="px-3 py-1 rounded-full text-xs font-500 transition-all
+            {% if not fmt %}bg-ink-700 text-cream-50{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200 border border-cream-200{% endif %}">
+            Todos
+        </a>
+        {% for f in formats %}
+        <a href="/?filter={{ filter }}&fmt={{ f }}{% if q %}&q={{ q }}{% endif %}"
+            class="px-3 py-1 rounded-full text-xs font-500 transition-all
+            {% if fmt == f %}bg-amber-600 text-white{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200 border border-cream-200{% endif %}">
+            {{ f }} <span class="opacity-60">{{ fmt_counts[f] }}</span>
         </a>
         {% endfor %}
     </div>
+    {% endif %}
 </div>
 
 <!-- Grilla de albums -->
@@ -72,7 +156,12 @@
         <div class="px-0.5">
             <p class="text-xs font-600 text-ink-700 truncate leading-tight">{{ album.title }}</p>
             <p class="text-xs text-ink-400 truncate">{{ album.artist }}</p>
-            {% if album.year %}<p class="text-xs text-ink-300">{{ album.year }}</p>{% endif %}
+            <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                {% if album.year %}<p class="text-xs text-ink-300">{{ album.year }}</p>{% endif %}
+                {% if album.format_type %}
+                <span class="text-xs text-ink-400 bg-cream-200 px-1.5 py-0 rounded-full leading-5">{{ album.format_type }}</span>
+                {% endif %}
+            </div>
         </div>
     </a>
     {% endfor %}
@@ -141,8 +230,13 @@
                     </div>
                     <div>
                         <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Formato</label>
-                        <input type="text" name="format_type" placeholder="Ej: Vinyl, CD"
-                            class="w-full bg-white border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+                        <select name="format_type"
+                            class="w-full bg-white border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400">
+                            <option value="">— Sin especificar —</option>
+                            {% for ft in format_types %}
+                            <option value="{{ ft.name }}">{{ ft.name }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                     <div>
                         <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Genero</label>

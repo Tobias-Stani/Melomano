@@ -111,6 +111,10 @@
                     {% if '/usuarios' in request.url.path %}bg-cream-300 text-ink-800{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200{% endif %}">
                     Usuarios
                 </a>
+                <a href="/formatos" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all
+                    {% if '/formatos' in request.url.path %}bg-cream-300 text-ink-800{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200{% endif %}">
+                    Formatos
+                </a>
                 <a href="/perfil/{{ user }}" class="ml-1 px-4 py-1.5 rounded-full text-sm font-medium transition-all
                     {% if '/perfil' in request.url.path %}bg-cream-300 text-ink-800{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200{% endif %}">
                     Mi perfil
@@ -164,6 +168,10 @@
             <a href="/usuarios" class="flex items-center px-4 py-2.5 rounded-xl text-sm font-medium transition-all
                 {% if '/usuarios' in request.url.path %}bg-cream-200 text-ink-800{% else %}text-ink-500 hover:bg-cream-200{% endif %}">
                 👥 Usuarios
+            </a>
+            <a href="/formatos" class="flex items-center px-4 py-2.5 rounded-xl text-sm font-medium transition-all
+                {% if '/formatos' in request.url.path %}bg-cream-200 text-ink-800{% else %}text-ink-500 hover:bg-cream-200{% endif %}">
+                💿 Formatos
             </a>
             <a href="/perfil/{{ user }}" class="flex items-center px-4 py-2.5 rounded-xl text-sm font-medium transition-all
                 {% if '/perfil' in request.url.path %}bg-cream-200 text-ink-800{% else %}text-ink-500 hover:bg-cream-200{% endif %}">

@@ -4,11 +4,12 @@ from fastapi import APIRouter, Depends, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, or_
+from sqlalchemy import desc, or_, func
 
 from app.database import get_db
 from app.models.album import Album
 from app.models.featured import FeaturedItem
+from app.models.format_type import FormatType
 from app.auth import get_current_user
 from app.services.discogs import sync_collection, search_discogs
 
@@ -17,7 +18,7 @@ templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("/", response_class=HTMLResponse)
-async def gallery(request: Request, q: str = None, filter: str = "all", db: Session = Depends(get_db)):
+async def gallery(request: Request, q: str = None, filter: str = "all", fmt: str = "", db: Session = Depends(get_db)):
     user  = get_current_user(request)
     if not user:
         return RedirectResponse(url="/perfil", status_code=302)
@@ -33,16 +34,58 @@ async def gallery(request: Request, q: str = None, filter: str = "all", db: Sess
     elif filter == "wishlist":
         query = query.filter(Album.wishlist == True)
 
+    if fmt:
+        query = query.filter(Album.format_type.ilike(f"%{fmt}%"))
+
     albums = query.order_by(Album.artist, Album.year).all()
-    total  = db.query(Album).filter(Album.deleted_at == None).count()
+
+    base = db.query(Album).filter(Album.deleted_at == None)
+    total = base.count()
+
+    # Formatos disponibles y conteos
+    fmt_counts_raw = (
+        base.filter(Album.format_type != None)
+        .with_entities(Album.format_type, func.count(Album.id))
+        .group_by(Album.format_type)
+        .order_by(func.count(Album.id).desc())
+        .all()
+    )
+    formats      = [r[0] for r in fmt_counts_raw]
+    fmt_counts   = {r[0]: r[1] for r in fmt_counts_raw}
+
+    # Géneros y conteos
+    genre_counts_raw = (
+        base.filter(Album.genre != None)
+        .with_entities(Album.genre, func.count(Album.id))
+        .group_by(Album.genre)
+        .order_by(func.count(Album.id).desc())
+        .limit(10)
+        .all()
+    )
+    genre_counts = {r[0]: r[1] for r in genre_counts_raw}
+
+    # Totales por estado
+    stats = {
+        "owned":    base.filter(Album.owned    == True).count(),
+        "listened": base.filter(Album.listened == True).count(),
+        "wishlist": base.filter(Album.wishlist == True).count(),
+    }
+
+    format_types = db.query(FormatType).order_by(FormatType.name).all()
 
     return templates.TemplateResponse("gallery.html", {
-        "request": request,
-        "user":    user,
-        "albums":  albums,
-        "total":   total,
-        "q":       q or "",
-        "filter":  filter,
+        "request":     request,
+        "user":        user,
+        "albums":      albums,
+        "total":       total,
+        "q":           q or "",
+        "filter":      filter,
+        "fmt":         fmt,
+        "formats":     formats,
+        "fmt_counts":  fmt_counts,
+        "genre_counts": genre_counts,
+        "stats":       stats,
+        "format_types": format_types,
     })
 
 
@@ -52,11 +95,13 @@ async def album_detail(album_id: int, request: Request, db: Session = Depends(ge
     album = db.query(Album).filter(Album.id == album_id, Album.deleted_at == None).first()
     if not album:
         raise HTTPException(status_code=404, detail="Album no encontrado")
-    is_featured = db.query(FeaturedItem).filter(
+    is_featured  = db.query(FeaturedItem).filter(
         FeaturedItem.type == "album", FeaturedItem.item_id == album_id
     ).first() is not None
+    format_types = db.query(FormatType).order_by(FormatType.name).all()
     return templates.TemplateResponse("album_detail.html", {
-        "request": request, "user": user, "album": album, "is_featured": is_featured,
+        "request": request, "user": user, "album": album,
+        "is_featured": is_featured, "format_types": format_types,
     })
 
 
@@ -65,6 +110,7 @@ async def save_review(
     album_id: int, request: Request,
     score: int = Form(None), review: str = Form(""),
     owned: str = Form(None), listened: str = Form(None), wishlist: str = Form(None),
+    format_type: str = Form(""),
     db: Session = Depends(get_db),
 ):
     if not get_current_user(request):
@@ -80,6 +126,61 @@ async def save_review(
     album.owned        = owned == "on"
     album.listened     = listened == "on"
     album.wishlist     = wishlist == "on"
+    if format_type:
+        album.format_type = format_type
+    db.commit()
+    return RedirectResponse(url=f"/album/{album_id}", status_code=303)
+
+
+@router.get("/album/{album_id}/edit", response_class=HTMLResponse)
+async def edit_album_form(album_id: int, request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    album = db.query(Album).filter(Album.id == album_id, Album.deleted_at == None).first()
+    if not album:
+        raise HTTPException(status_code=404, detail="Album no encontrado")
+    format_types = db.query(FormatType).order_by(FormatType.name).all()
+    return templates.TemplateResponse("album_edit.html", {
+        "request": request, "user": user, "album": album, "format_types": format_types,
+    })
+
+
+@router.post("/album/{album_id}/edit")
+async def edit_album(
+    album_id: int, request: Request,
+    title: str = Form(...),
+    artist: str = Form(...),
+    year: int = Form(None),
+    genre: str = Form(""),
+    label: str = Form(""),
+    cover_url: str = Form(""),
+    format_type: str = Form(""),
+    score: int = Form(None),
+    review: str = Form(""),
+    owned: str = Form(None),
+    listened: str = Form(None),
+    wishlist: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    if not get_current_user(request):
+        return RedirectResponse(url="/login", status_code=302)
+    album = db.query(Album).filter(Album.id == album_id, Album.deleted_at == None).first()
+    if not album:
+        raise HTTPException(status_code=404)
+    album.title       = title
+    album.artist      = artist
+    album.year        = year or None
+    album.genre       = genre or None
+    album.label       = label or None
+    album.cover_url   = cover_url or None
+    album.format_type = format_type or None
+    if score is not None:
+        album.score   = score
+    album.review      = review
+    album.owned       = owned == "on"
+    album.listened    = listened == "on"
+    album.wishlist    = wishlist == "on"
     db.commit()
     return RedirectResponse(url=f"/album/{album_id}", status_code=303)
 

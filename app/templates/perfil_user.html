@@ -46,11 +46,14 @@
 
     <!-- Discos favoritos -->
     <section class="mb-12">
-        <div class="flex items-center gap-3 mb-5">
-            <p class="text-xs uppercase tracking-widest text-ink-400">Discos favoritos</p>
-            {% if is_own and albums %}
-            <span class="text-xs text-ink-300 italic">arrastrá para reordenar</span>
-            {% endif %}
+        <div class="flex items-center justify-between mb-5">
+            <div class="flex items-center gap-3">
+                <p class="text-xs uppercase tracking-widest text-ink-400">Discos favoritos</p>
+                {% if is_own and albums %}
+                <span class="text-xs text-ink-300 italic">arrastrá para reordenar</span>
+                {% endif %}
+            </div>
+            <a href="/" class="text-xs text-ink-400 hover:text-ink-700 transition-all hover:underline">Ver todos →</a>
         </div>
 
         {% if albums %}
@@ -93,7 +96,10 @@
     <!-- Bares hifi favoritos -->
     {% if bars or is_own %}
     <section class="mb-12">
-        <p class="text-xs uppercase tracking-widest text-ink-400 mb-5">Bares hifi favoritos</p>
+        <div class="flex items-center justify-between mb-5">
+            <p class="text-xs uppercase tracking-widest text-ink-400">Bares hifi favoritos</p>
+            <a href="/bares" class="text-xs text-ink-400 hover:text-ink-700 transition-all hover:underline">Ver todos →</a>
+        </div>
         {% if bars %}
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {% for slot in range(1, 4) %}
@@ -127,7 +133,10 @@
 
     <!-- Recitales favoritos -->
     <section>
-        <p class="text-xs uppercase tracking-widest text-ink-400 mb-5">Recitales favoritos</p>
+        <div class="flex items-center justify-between mb-5">
+            <p class="text-xs uppercase tracking-widest text-ink-400">Recitales favoritos</p>
+            <a href="/concerts" class="text-xs text-ink-400 hover:text-ink-700 transition-all hover:underline">Ver todos →</a>
+        </div>
         {% if concerts %}
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {% for slot in range(1, 4) %}
