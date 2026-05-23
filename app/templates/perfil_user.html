@@ -179,6 +179,86 @@
         {% endif %}
     </section>
 
+
+    <!-- Recientes -->
+    {% if last_album or last_concert or last_visit %}
+    <section class="mt-12 pt-10 border-t border-cream-200">
+        <p class="text-xs uppercase tracking-widest text-ink-400 mb-5">Recientes</p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+            {% if last_album %}
+            <a href="/album/{{ last_album.id }}" class="group bg-cream-100 border border-cream-200 rounded-2xl p-4 hover:shadow-md transition-all hover:border-cream-300 flex gap-3 items-start">
+                <div class="w-14 h-14 rounded-xl overflow-hidden bg-cream-200 flex-shrink-0">
+                    {% if last_album.cover_url %}
+                    <img src="{{ last_album.cover_url }}" alt="{{ last_album.title }}" class="w-full h-full object-cover" />
+                    {% else %}
+                    <div class="w-full h-full flex items-center justify-center text-2xl">🎵</div>
+                    {% endif %}
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-xs uppercase tracking-widest text-ink-300 mb-1">Último disco agregado</p>
+                    <p class="font-serif font-600 text-ink-800 truncate leading-tight">{{ last_album.title }}</p>
+                    <p class="text-xs text-ink-400 truncate">{{ last_album.artist }}</p>
+                    {% if last_album.year %}<p class="text-xs text-ink-300">{{ last_album.year }}</p>{% endif %}
+                    {% if last_album.score %}
+                    <p class="text-xs text-ink-500 mt-1">{{ emojis[last_album.score] }} {{ last_album.score }}/10</p>
+                    {% endif %}
+                </div>
+            </a>
+            {% endif %}
+
+            {% if last_concert %}
+            <a href="/concerts/{{ last_concert.id }}" class="group bg-cream-100 border border-cream-200 rounded-2xl p-4 hover:shadow-md transition-all hover:border-cream-300 flex gap-3 items-start">
+                <div class="w-14 h-14 rounded-xl overflow-hidden bg-cream-200 flex-shrink-0">
+                    {% if last_concert.cover_url %}
+                    <img src="{{ last_concert.cover_url }}" alt="{{ last_concert.artist }}" class="w-full h-full object-cover" />
+                    {% else %}
+                    <div class="w-full h-full flex items-center justify-center text-2xl">🎤</div>
+                    {% endif %}
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-xs uppercase tracking-widest text-ink-300 mb-1">Último recital</p>
+                    <p class="font-serif font-600 text-ink-800 truncate leading-tight">{{ last_concert.artist }}</p>
+                    <p class="text-xs text-ink-400">{{ last_concert.date.strftime('%d/%m/%Y') }}</p>
+                    {% if last_concert.venue or last_concert.city %}
+                    <p class="text-xs text-ink-300 truncate">
+                        {% if last_concert.venue %}{{ last_concert.venue }}{% endif %}
+                        {% if last_concert.city %} &middot; {{ last_concert.city }}{% endif %}
+                    </p>
+                    {% endif %}
+                    {% if last_concert.score %}
+                    <p class="text-xs text-ink-500 mt-1">{{ emojis[last_concert.score] }} {{ last_concert.score }}/10</p>
+                    {% endif %}
+                </div>
+            </a>
+            {% endif %}
+
+            {% if last_visit %}
+            <a href="/bares/{{ last_visit.bar.id }}" class="group bg-cream-100 border border-cream-200 rounded-2xl p-4 hover:shadow-md transition-all hover:border-cream-300 flex gap-3 items-start">
+                <div class="w-14 h-14 rounded-xl overflow-hidden bg-cream-200 flex-shrink-0">
+                    {% if last_visit.bar.cover_url %}
+                    <img src="{{ last_visit.bar.cover_url }}" alt="{{ last_visit.bar.name }}" class="w-full h-full object-cover" />
+                    {% else %}
+                    <div class="w-full h-full flex items-center justify-center text-2xl">🎶</div>
+                    {% endif %}
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-xs uppercase tracking-widest text-ink-300 mb-1">Último bar visitado</p>
+                    <p class="font-serif font-600 text-ink-800 truncate leading-tight">{{ last_visit.bar.name }}</p>
+                    <p class="text-xs text-ink-400">{{ last_visit.date.strftime('%d/%m/%Y') }}</p>
+                    {% if last_visit.bar.city %}<p class="text-xs text-ink-300">📍 {{ last_visit.bar.city }}</p>{% endif %}
+                    {% if last_visit.drinks %}<p class="text-xs text-ink-400 truncate mt-1">🥃 {{ last_visit.drinks }}</p>{% endif %}
+                    {% if last_visit.score %}
+                    <p class="text-xs text-ink-500 mt-1">{{ emojis[last_visit.score] }} {{ last_visit.score }}/10</p>
+                    {% endif %}
+                </div>
+            </a>
+            {% endif %}
+
+        </div>
+    </section>
+    {% endif %}
+
 </div>
 {% endblock %}
 

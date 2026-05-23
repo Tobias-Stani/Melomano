@@ -19,3 +19,8 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Local / herramientas
+.atl/
+docker-compose.yml
+Dockerfile

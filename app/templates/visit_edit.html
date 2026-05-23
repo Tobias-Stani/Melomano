@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Editar visita — {{ bar.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto">
+
+    <a href="/bares/{{ bar.id }}#visitas"
+        class="inline-flex items-center gap-1.5 text-sm text-ink-400 hover:text-ink-700 transition-all mb-6">
+        ← Volver a {{ bar.name }}
+    </a>
+
+    <h1 class="font-serif text-2xl font-700 text-ink-800 mb-1">Editar visita</h1>
+    <p class="text-sm text-ink-400 mb-8">{{ bar.name }}</p>
+
+    <form action="/bares/{{ bar.id }}/visitas/{{ visit.id }}/editar" method="POST" class="space-y-5">
+
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Fecha *</label>
+                <input type="date" name="date" value="{{ visit.date.isoformat() }}" required
+                    class="w-full bg-white border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+            </div>
+            <div>
+                <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">
+                    Nota: <span id="scoreVal" class="font-serif text-lg font-700 text-ink-800">{{ visit.score or 5 }}</span>/10
+                </label>
+                <input type="range" name="score" min="1" max="10" value="{{ visit.score or 5 }}"
+                    oninput="document.getElementById('scoreVal').textContent=this.value"
+                    class="w-full h-1.5 rounded-full appearance-none cursor-pointer mt-2"
+                    style="-webkit-appearance:none;background:#e4ceac;" />
+            </div>
+        </div>
+
+        <div>
+            <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">¿Qué tomaste?</label>
+            <input type="text" name="drinks" value="{{ visit.drinks or '' }}"
+                placeholder="Ej: Whisky japonés, cerveza artesanal..."
+                class="w-full bg-white border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+        </div>
+
+        <div>
+            <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Notas</label>
+            <textarea name="notes" rows="4"
+                placeholder="Qué sonaba, el ambiente, con quien fuiste..."
+                class="w-full bg-white border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400 resize-none">{{ visit.notes or '' }}</textarea>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+            <button type="submit"
+                class="px-6 py-2.5 bg-ink-800 text-cream-50 rounded-xl text-sm hover:bg-ink-700 transition-all">
+                Guardar cambios
+            </button>
+            <a href="/bares/{{ bar.id }}#visitas"
+                class="px-6 py-2.5 border border-cream-300 text-ink-500 rounded-xl text-sm hover:bg-cream-200 transition-all">
+                Cancelar
+            </a>
+        </div>
+
+    </form>
+</div>
+{% endblock %}

@@ -10,6 +10,7 @@ from app.models.featured import FeaturedItem
 from app.models.album import Album
 from app.models.concert import Concert
 from app.models.hifi_bar import HifiBar
+from app.models.bar_visit import BarVisit
 from app.models.user import User
 from app.auth import get_current_user
 
@@ -151,6 +152,16 @@ async def perfil_usuario(username: str, request: Request, db: Session = Depends(
     if not profile:
         return RedirectResponse(url="/perfil", status_code=302)
     albums, concerts, bars = _load_featured(db, profile.id)
+
+    last_album   = db.query(Album).order_by(Album.created_at.desc()).first()
+    last_concert = db.query(Concert).order_by(Concert.date.desc()).first()
+    last_visit   = (
+        db.query(BarVisit)
+        .join(HifiBar, BarVisit.bar_id == HifiBar.id)
+        .order_by(BarVisit.date.desc())
+        .first()
+    )
+
     return templates.TemplateResponse("perfil_user.html", {
         "request":      request,
         "user":         current_user,
@@ -160,6 +171,9 @@ async def perfil_usuario(username: str, request: Request, db: Session = Depends(
         "bars":         bars,
         "emojis":       EMOJIS,
         "is_own":       current_user == username,
+        "last_album":   last_album,
+        "last_concert": last_concert,
+        "last_visit":   last_visit,
     })
 
 

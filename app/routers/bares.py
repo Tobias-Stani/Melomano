@@ -185,6 +185,44 @@ async def visit_add(
     return RedirectResponse(url=f"/bares/{bar_id}#visitas", status_code=303)
 
 
+@router.get("/bares/{bar_id}/visitas/{visit_id}/editar", response_class=HTMLResponse)
+async def visit_edit_form(bar_id: int, visit_id: int, request: Request, db: Session = Depends(get_db)):
+    if not get_current_user(request):
+        return RedirectResponse(url="/login", status_code=302)
+    bar   = db.query(HifiBar).filter(HifiBar.id == bar_id).first()
+    visit = db.query(BarVisit).filter(BarVisit.id == visit_id, BarVisit.bar_id == bar_id).first()
+    if not bar or not visit:
+        raise HTTPException(status_code=404)
+    return templates.TemplateResponse("visit_edit.html", {
+        "request": request,
+        "user":    get_current_user(request),
+        "bar":     bar,
+        "visit":   visit,
+    })
+
+
+@router.post("/bares/{bar_id}/visitas/{visit_id}/editar")
+async def visit_edit(
+    bar_id: int, visit_id: int, request: Request,
+    date: str   = Form(...),
+    drinks: str = Form(""),
+    notes: str  = Form(""),
+    score: int  = Form(None),
+    db: Session = Depends(get_db),
+):
+    if not get_current_user(request):
+        return RedirectResponse(url="/login", status_code=302)
+    visit = db.query(BarVisit).filter(BarVisit.id == visit_id, BarVisit.bar_id == bar_id).first()
+    if not visit:
+        raise HTTPException(status_code=404)
+    visit.date   = datetime.date.fromisoformat(date)
+    visit.drinks = drinks or None
+    visit.notes  = notes or None
+    visit.score  = score
+    db.commit()
+    return RedirectResponse(url=f"/bares/{bar_id}#visitas", status_code=303)
+
+
 @router.get("/bares/{bar_id}/visitas/{visit_id}/delete")
 async def visit_delete(bar_id: int, visit_id: int, request: Request, db: Session = Depends(get_db)):
     if not get_current_user(request):

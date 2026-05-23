@@ -124,9 +124,13 @@
                         {% endif %}
                     </div>
                     {% if user %}
-                    <a href="/bares/{{ bar.id }}/visitas/{{ visit.id }}/delete"
-                        onclick="return confirm('Eliminar esta visita?')"
-                        class="text-ink-300 hover:text-red-400 text-xs transition-all flex-shrink-0">✕</a>
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <a href="/bares/{{ bar.id }}/visitas/{{ visit.id }}/editar"
+                            class="text-ink-300 hover:text-ink-600 text-xs transition-all">✎</a>
+                        <a href="/bares/{{ bar.id }}/visitas/{{ visit.id }}/delete"
+                            onclick="return confirm('Eliminar esta visita?')"
+                            class="text-ink-300 hover:text-red-400 text-xs transition-all">✕</a>
+                    </div>
                     {% endif %}
                 </div>
             </div>
