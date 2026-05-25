@@ -8,6 +8,10 @@
         <p class="text-ink-400 text-sm mt-1">{{ total }} discos registrados</p>
     </div>
     <div class="flex items-center gap-2 flex-wrap">
+        <button onclick="openRandomModal()"
+            class="px-4 py-2 rounded-xl text-sm font-500 bg-amber-500 hover:bg-amber-400 text-white transition-all shadow-sm">
+            🎲 Disco aleatorio
+        </button>
         {% if user %}
         <button onclick="document.getElementById('statsPanel').classList.toggle('hidden')"
             class="px-4 py-2 rounded-xl text-sm font-500 border border-cream-300 text-ink-600 hover:bg-cream-200 transition-all">
@@ -211,21 +215,30 @@
 
         <!-- Panel Manual -->
         <div id="panelManual" class="hidden">
+            <!-- Autocompletar desde Discogs -->
+            <div class="relative mb-3">
+                <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Buscar para autocompletar</label>
+                <input id="manualSearch" type="text" placeholder="Escribí artista o album..."
+                    class="w-full bg-white border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+                <div id="manualSuggestions" class="hidden absolute z-10 w-full mt-1 bg-white border border-cream-200 rounded-xl shadow-lg max-h-52 overflow-y-auto"></div>
+            </div>
             <form action="/album/add" method="POST" class="space-y-3">
+                <input type="hidden" name="discogs_id" id="m_discogs_id" />
+                <input type="hidden" name="discogs_url" id="m_discogs_url" />
                 <div class="grid grid-cols-2 gap-3">
                     <div class="col-span-2">
                         <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Artista *</label>
-                        <input type="text" name="artist" required placeholder="Ej: Pink Floyd"
+                        <input type="text" name="artist" id="m_artist" required placeholder="Ej: Pink Floyd"
                             class="w-full bg-white border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
                     </div>
                     <div class="col-span-2">
                         <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Titulo *</label>
-                        <input type="text" name="title" required placeholder="Ej: The Wall"
+                        <input type="text" name="title" id="m_title" required placeholder="Ej: The Wall"
                             class="w-full bg-white border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
                     </div>
                     <div>
                         <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Año</label>
-                        <input type="number" name="year" placeholder="Ej: 1979" min="1900" max="2099"
+                        <input type="number" name="year" id="m_year" placeholder="Ej: 1979" min="1900" max="2099"
                             class="w-full bg-white border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
                     </div>
                     <div>
@@ -244,17 +257,17 @@
                     </div>
                     <div>
                         <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Genero</label>
-                        <input type="text" name="genre" placeholder="Ej: Rock"
+                        <input type="text" name="genre" id="m_genre" placeholder="Ej: Rock"
                             class="w-full bg-white border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
                     </div>
                     <div>
                         <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Sello</label>
-                        <input type="text" name="label" placeholder="Ej: Columbia"
+                        <input type="text" name="label" id="m_label" placeholder="Ej: Columbia"
                             class="w-full bg-white border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
                     </div>
                     <div class="col-span-2">
                         <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">URL de portada</label>
-                        <input type="url" name="cover_url" placeholder="https://..."
+                        <input type="url" name="cover_url" id="m_cover_url" placeholder="https://..."
                             class="w-full bg-white border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
                     </div>
                 </div>
@@ -279,6 +292,98 @@
     </div>
 </div>
 {% endif %}
+
+<!-- Modal disco aleatorio -->
+<div id="randomModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onclick="closeRandomModal(event)">
+    <div class="bg-cream-50 rounded-3xl p-8 w-full max-w-sm shadow-2xl text-center" onclick="event.stopPropagation()">
+        <p class="text-xs uppercase tracking-widest text-ink-400 mb-6">Disco aleatorio</p>
+        <div class="relative w-40 h-40 mx-auto mb-6 rounded-2xl overflow-hidden shadow-xl">
+            <div id="randomSlot" class="w-full h-full bg-cream-200 flex items-center justify-center transition-transform duration-150">
+                <span class="text-4xl">🎲</span>
+            </div>
+        </div>
+        <div id="randomResult" class="hidden">
+            <p id="randomArtist" class="text-xs uppercase tracking-widest text-ink-400 mb-1"></p>
+            <p id="randomTitle" class="font-serif text-xl font-700 text-ink-800 mb-1"></p>
+            <p id="randomMeta" class="text-xs text-ink-400 mb-6"></p>
+            <a id="randomLink" href="#"
+                class="inline-block px-6 py-2.5 bg-ink-800 text-cream-50 rounded-xl text-sm font-500 hover:bg-ink-700 transition-all">
+                Ver disco →
+            </a>
+        </div>
+        <button id="randomSpinBtn" onclick="spinRandom()"
+            class="mt-4 px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-white rounded-xl text-sm font-500 transition-all">
+            🎲 Girar
+        </button>
+    </div>
+</div>
+
+<script>
+const allAlbums = [
+    {% for a in albums %}
+    { id: {{ a.id }}, title: {{ a.title|tojson }}, artist: {{ a.artist|tojson }}, year: {{ a.year or 'null' }}, cover: {{ (a.cover_url or '')|tojson }}, fmt: {{ (a.format_type or '')|tojson }} }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
+function openRandomModal() {
+    document.getElementById('randomModal').classList.remove('hidden');
+    document.getElementById('randomResult').classList.add('hidden');
+    document.getElementById('randomSlot').innerHTML = '<span class="text-4xl">🎲</span>';
+    document.getElementById('randomSpinBtn').textContent = '🎲 Girar';
+    document.getElementById('randomSpinBtn').disabled = false;
+    document.getElementById('randomSpinBtn').classList.remove('opacity-50');
+}
+
+function closeRandomModal(e) {
+    document.getElementById('randomModal').classList.add('hidden');
+}
+
+function spinRandom() {
+    if (!allAlbums.length) return;
+    const btn  = document.getElementById('randomSpinBtn');
+    const slot = document.getElementById('randomSlot');
+    btn.disabled = true;
+    btn.classList.add('opacity-50');
+    document.getElementById('randomResult').classList.add('hidden');
+
+    const picked = allAlbums[Math.floor(Math.random() * allAlbums.length)];
+    const fakes  = allAlbums.slice().sort(() => Math.random() - 0.5).slice(0, 14);
+    let i = 0, delay = 60;
+
+    function tick() {
+        const a = fakes[i % fakes.length];
+        slot.innerHTML = a.cover
+            ? `<img src="${a.cover}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\\'w-full h-full flex items-center justify-center bg-cream-300\\'><span class=\\'text-3xl\\'>🎵</span></div>'" />`
+            : `<div class="w-full h-full flex items-center justify-center bg-cream-300"><span class="text-3xl">🎵</span></div>`;
+        i++;
+        delay = Math.min(delay * 1.18, 420);
+        if (delay < 410) { setTimeout(tick, delay); }
+        else { setTimeout(() => showPicked(picked), 150); }
+    }
+    tick();
+}
+
+function showPicked(a) {
+    const slot = document.getElementById('randomSlot');
+    slot.innerHTML = a.cover
+        ? `<img src="${a.cover}" class="w-full h-full object-cover" />`
+        : `<div class="w-full h-full flex items-center justify-center bg-cream-300 text-5xl">🎵</div>`;
+    slot.style.transform = 'scale(1.1)';
+    setTimeout(() => slot.style.transform = '', 300);
+
+    document.getElementById('randomArtist').textContent = a.artist;
+    document.getElementById('randomTitle').textContent  = a.title;
+    document.getElementById('randomMeta').textContent   = [a.year, a.fmt].filter(Boolean).join(' · ');
+    document.getElementById('randomLink').href          = `/album/${a.id}`;
+    document.getElementById('randomResult').classList.remove('hidden');
+
+    const btn = document.getElementById('randomSpinBtn');
+    btn.textContent = '🎲 Otra vez';
+    btn.disabled    = false;
+    btn.classList.remove('opacity-50');
+}
+</script>
+
 {% endblock %}
 
 {% block scripts %}
@@ -341,6 +446,60 @@ function selectAlbum(r) {
 
 document.getElementById('discogsSearch').addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); searchDiscogs(); }
+});
+
+// Autocomplete en formulario manual
+let manualDebounce;
+document.getElementById('manualSearch').addEventListener('input', function() {
+    clearTimeout(manualDebounce);
+    const q = this.value.trim();
+    const box = document.getElementById('manualSuggestions');
+    if (q.length < 2) { box.classList.add('hidden'); return; }
+    manualDebounce = setTimeout(async () => {
+        const resp = await fetch(`/search/discogs?q=${encodeURIComponent(q)}`);
+        const results = await resp.json();
+        if (!results.length) { box.classList.add('hidden'); return; }
+        box.innerHTML = results.map(r => {
+            const parts  = r.title.split(' - ');
+            const artist = parts.length > 1 ? parts[0].trim() : '';
+            const title  = parts.length > 1 ? parts.slice(1).join(' - ').trim() : r.title;
+            return `<div onclick='fillManualForm(${JSON.stringify(r).replace(/'/g,"\\'")})'
+                class="flex items-center gap-3 px-3 py-2 hover:bg-cream-100 cursor-pointer transition-all">
+                <img src="${r.cover_url || ''}" onerror="this.style.display='none'" class="w-9 h-9 rounded object-cover bg-cream-200 flex-shrink-0" />
+                <div class="min-w-0">
+                    <p class="text-sm font-500 text-ink-800 truncate">${artist || title}</p>
+                    <p class="text-xs text-ink-400 truncate">${artist ? title : ''} ${r.year ? '· '+r.year : ''}</p>
+                </div>
+            </div>`;
+        }).join('');
+        box.classList.remove('hidden');
+    }, 350);
+});
+
+function fillManualForm(r) {
+    const parts  = r.title.split(' - ');
+    const artist = parts.length > 1 ? parts[0].trim() : '';
+    const title  = parts.length > 1 ? parts.slice(1).join(' - ').trim() : r.title;
+    document.getElementById('m_artist').value     = artist;
+    document.getElementById('m_title').value      = title;
+    document.getElementById('m_year').value       = r.year || '';
+    document.getElementById('m_genre').value      = r.genre || '';
+    document.getElementById('m_label').value      = r.label || '';
+    document.getElementById('m_cover_url').value  = r.cover_url || '';
+    document.getElementById('m_discogs_id').value = r.discogs_id || '';
+    document.getElementById('m_discogs_url').value= r.discogs_url || '';
+    const sel = document.getElementById('manualFormatSelect');
+    if (r.format_type) {
+        for (let opt of sel.options) { if (opt.value === r.format_type) { opt.selected = true; break; } }
+    }
+    document.getElementById('manualSuggestions').classList.add('hidden');
+    document.getElementById('manualSearch').value = '';
+}
+
+document.addEventListener('click', e => {
+    if (!e.target.closest('#panelManual')) {
+        document.getElementById('manualSuggestions').classList.add('hidden');
+    }
 });
 
 function openAddFormatModal() {

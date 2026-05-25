@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(docker compose *)"
+      "Bash(docker compose *)",
+      "Bash(sudo docker-compose down)",
+      "Bash(sudo docker rm -f melomano_web_1)",
+      "Bash(sudo docker rm -f melomano_db_1)"
     ]
   }
 }
