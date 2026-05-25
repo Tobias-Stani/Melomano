@@ -11,7 +11,7 @@ from app.models.album import Album
 from app.models.featured import FeaturedItem
 from app.models.format_type import FormatType
 from app.auth import get_current_user
-from app.services.discogs import sync_collection, search_discogs, fetch_release_details
+from app.services.discogs import sync_collection, search_discogs, fetch_release_details, search_by_barcode
 
 router    = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -226,6 +226,16 @@ async def discogs_search(request: Request, q: str = "", db: Session = Depends(ge
     if not q:
         return JSONResponse([])
     results = await search_discogs(q)
+    return JSONResponse(results)
+
+
+@router.get("/search/barcode")
+async def barcode_search(request: Request, code: str = ""):
+    if not get_current_user(request):
+        return JSONResponse({"error": "no autorizado"}, status_code=401)
+    if not code:
+        return JSONResponse([])
+    results = await search_by_barcode(code)
     return JSONResponse(results)
 
 

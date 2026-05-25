@@ -171,6 +171,34 @@ async def fetch_release_details(discogs_id: int) -> dict | None:
     }
 
 
+async def search_by_barcode(barcode: str) -> list[dict]:
+    """Busca un release por código de barras."""
+    url    = f"{BASE_URL}/database/search"
+    params = {"barcode": barcode, "per_page": 5}
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(url, headers=_headers(), params=params)
+        resp.raise_for_status()
+        results = resp.json().get("results", [])
+
+    out = []
+    for r in results:
+        parts  = r.get("title", "").split(" - ", 1)
+        artist = parts[0].strip() if len(parts) > 1 else ""
+        title  = parts[1].strip() if len(parts) > 1 else parts[0].strip()
+        out.append({
+            "discogs_id":  r.get("id"),
+            "title":       title,
+            "artist":      artist,
+            "year":        r.get("year"),
+            "genre":       ", ".join(r.get("genre", []) + r.get("style", [])),
+            "label":       r.get("label", [None])[0] if r.get("label") else None,
+            "cover_url":   r.get("cover_image") or r.get("thumb"),
+            "format_type": r.get("format", [None])[0] if r.get("format") else None,
+            "discogs_url": f"https://www.discogs.com/release/{r.get('id')}",
+        })
+    return out
+
+
 async def search_discogs(query: str, search_type: str = "release") -> list[dict]:
     """Busca en el catalogo de Discogs."""
     url    = f"{BASE_URL}/database/search"
