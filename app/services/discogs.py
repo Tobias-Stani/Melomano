@@ -140,6 +140,37 @@ async def sync_collection(db: Session) -> SyncLog:
     return log
 
 
+async def fetch_release_details(discogs_id: int) -> dict | None:
+    """Trae el detalle completo de un release: imágenes, tracklist, notas, videos."""
+    url = f"{BASE_URL}/releases/{discogs_id}"
+    async with httpx.AsyncClient(timeout=15) as client:
+        try:
+            resp = await client.get(url, headers=_headers())
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception:
+            return None
+
+    images   = data.get("images", [])
+    tracklist = data.get("tracklist", [])
+    videos   = data.get("videos", [])
+    community = data.get("community", {})
+    rating   = community.get("rating", {})
+
+    return {
+        "images":    [{"url": img.get("uri"), "type": img.get("type")} for img in images if img.get("uri")],
+        "tracklist": [{"pos": t.get("position", ""), "title": t.get("title", ""), "duration": t.get("duration", "")} for t in tracklist],
+        "notes":     data.get("notes"),
+        "country":   data.get("country"),
+        "released":  data.get("released"),
+        "videos":    [{"url": v.get("uri"), "title": v.get("title", "")} for v in videos if v.get("uri")],
+        "rating_avg":   rating.get("average"),
+        "rating_count": rating.get("count"),
+        "community_have": community.get("have"),
+        "community_want": community.get("want"),
+    }
+
+
 async def search_discogs(query: str, search_type: str = "release") -> list[dict]:
     """Busca en el catalogo de Discogs."""
     url    = f"{BASE_URL}/database/search"

@@ -11,7 +11,7 @@ from app.models.album import Album
 from app.models.featured import FeaturedItem
 from app.models.format_type import FormatType
 from app.auth import get_current_user
-from app.services.discogs import sync_collection, search_discogs
+from app.services.discogs import sync_collection, search_discogs, fetch_release_details
 
 router    = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -97,9 +97,11 @@ async def album_detail(album_id: int, request: Request, db: Session = Depends(ge
         FeaturedItem.type == "album", FeaturedItem.item_id == album_id
     ).first() is not None
     format_types = db.query(FormatType).order_by(FormatType.name).all()
+    discogs_extra = await fetch_release_details(album.discogs_id) if album.discogs_id else None
     return templates.TemplateResponse("album_detail.html", {
         "request": request, "user": user, "album": album,
         "is_featured": is_featured, "format_types": format_types,
+        "extra": discogs_extra,
     })
 
 

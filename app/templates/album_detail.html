@@ -4,38 +4,51 @@
 {% block content %}
 <div class="max-w-3xl mx-auto">
 
-    <!-- Back -->
     <a href="/" class="inline-flex items-center gap-1.5 text-sm text-ink-400 hover:text-ink-700 mb-6 transition-all">
         ← Volver a la coleccion
     </a>
 
-    <div class="flex gap-8 items-start flex-wrap md:flex-nowrap">
+    <div class="flex gap-8 items-start flex-wrap md:flex-nowrap mb-8">
 
-        <!-- Portada -->
-        <div class="flex-shrink-0 w-48 md:w-56">
-            <div class="aspect-square rounded-2xl overflow-hidden bg-cream-200 shadow-md">
-                {% if album.cover_url %}
-                <img src="{{ album.cover_url }}" alt="{{ album.title }}" class="w-full h-full object-cover"
+        <!-- Portada + galería -->
+        <div class="flex-shrink-0 w-48 md:w-56 space-y-2">
+            <!-- Portada principal -->
+            <div class="aspect-square rounded-2xl overflow-hidden bg-cream-200 shadow-md cursor-pointer" onclick="openLightbox(0)">
+                {% set primary = extra.images[0].url if extra and extra.images else album.cover_url %}
+                {% if primary %}
+                <img id="mainCover" src="{{ primary }}" alt="{{ album.title }}" class="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />
                 <div class="hidden w-full h-full items-center justify-center text-6xl">🎵</div>
                 {% else %}
                 <div class="w-full h-full flex items-center justify-center text-6xl">🎵</div>
                 {% endif %}
             </div>
+
+            <!-- Thumbnails extras -->
+            {% if extra and extra.images|length > 1 %}
+            <div class="flex gap-1.5 flex-wrap">
+                {% for img in extra.images[:6] %}
+                <div class="w-12 h-12 rounded-lg overflow-hidden bg-cream-200 cursor-pointer border-2 {% if loop.first %}border-ink-400{% else %}border-transparent{% endif %} hover:border-ink-400 transition-all"
+                    onclick="openLightbox({{ loop.index0 }})">
+                    <img src="{{ img.url }}" class="w-full h-full object-cover"
+                        onerror="this.parentElement.style.display='none'" />
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
             {% if album.discogs_url %}
             <a href="{{ album.discogs_url }}" target="_blank"
-                class="mt-3 flex items-center justify-center gap-1.5 text-xs text-ink-400 hover:text-ink-700 transition-all">
+                class="flex items-center justify-center gap-1.5 text-xs text-ink-400 hover:text-ink-700 transition-all pt-1">
                 Ver en Discogs ↗
             </a>
             {% endif %}
         </div>
 
-        <!-- Info -->
+        <!-- Info principal -->
         <div class="flex-1 min-w-0">
-            <div class="flex items-start gap-2 flex-wrap mb-1">
-                {% if album.format_type %}
-                <span class="text-xs bg-cream-200 text-ink-600 px-2.5 py-0.5 rounded-full">{{ album.format_type }}</span>
-                {% endif %}
+            <div class="flex items-start gap-2 flex-wrap mb-2">
+                {% if album.format_type %}<span class="text-xs bg-cream-200 text-ink-600 px-2.5 py-0.5 rounded-full">{{ album.format_type }}</span>{% endif %}
                 {% if album.owned %}<span class="text-xs bg-cream-200 text-ink-600 px-2.5 py-0.5 rounded-full">💿 Coleccion</span>{% endif %}
                 {% if album.wishlist %}<span class="text-xs bg-cream-200 text-ink-600 px-2.5 py-0.5 rounded-full">🔖 Wishlist</span>{% endif %}
                 {% if album.listened %}<span class="text-xs bg-cream-200 text-ink-600 px-2.5 py-0.5 rounded-full">✓ Escuchado</span>{% endif %}
@@ -44,22 +57,42 @@
             <h1 class="font-serif text-3xl font-700 text-ink-800 tracking-tight leading-tight mb-1">{{ album.title }}</h1>
             <p class="text-xl text-ink-500 mb-4">{{ album.artist }}</p>
 
-            <div class="flex gap-6 text-sm text-ink-400 mb-6 flex-wrap">
+            <div class="flex gap-5 text-sm text-ink-400 mb-4 flex-wrap">
                 {% if album.year %}<span>{{ album.year }}</span>{% endif %}
+                {% if extra and extra.country %}<span>{{ extra.country }}</span>{% endif %}
                 {% if album.genre %}<span>{{ album.genre }}</span>{% endif %}
                 {% if album.label %}<span>{{ album.label }}</span>{% endif %}
             </div>
 
-            <!-- Score y review -->
+            <!-- Community stats de Discogs -->
+            {% if extra and extra.rating_avg %}
+            <div class="flex items-center gap-4 mb-4 text-sm">
+                <div class="flex items-center gap-1.5">
+                    <span class="text-amber-500 text-base">★</span>
+                    <span class="font-600 text-ink-700">{{ "%.1f"|format(extra.rating_avg) }}</span>
+                    <span class="text-ink-400">/ 5</span>
+                    {% if extra.rating_count %}<span class="text-xs text-ink-400">({{ extra.rating_count }} votos)</span>{% endif %}
+                </div>
+                {% if extra.community_have %}
+                <span class="text-xs text-ink-400">💿 {{ extra.community_have }} tienen</span>
+                {% endif %}
+                {% if extra.community_want %}
+                <span class="text-xs text-ink-400">🔖 {{ extra.community_want }} quieren</span>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Score personal -->
             {% if album.score %}
             <div class="flex items-center gap-3 mb-4">
                 <span class="font-serif text-4xl font-700 text-ink-800">{{ album.score }}</span>
                 <span class="text-ink-400 text-lg">/10</span>
+                <span class="text-xs text-ink-400">mi puntuacion</span>
             </div>
             {% endif %}
 
             {% if album.review %}
-            <blockquote class="border-l-2 border-cream-300 pl-4 text-ink-500 text-sm leading-relaxed italic mb-6">
+            <blockquote class="border-l-2 border-cream-300 pl-4 text-ink-500 text-sm leading-relaxed italic mb-4">
                 {{ album.review }}
             </blockquote>
             {% endif %}
@@ -90,6 +123,94 @@
         </div>
     </div>
 
+    <!-- Notas del release -->
+    {% if extra and extra.notes %}
+    <div class="bg-cream-100 border border-cream-200 rounded-2xl p-5 mb-6">
+        <p class="text-xs uppercase tracking-widest text-ink-400 mb-3">Notas</p>
+        <p class="text-sm text-ink-600 leading-relaxed whitespace-pre-line">{{ extra.notes }}</p>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+
+        <!-- Tracklist -->
+        {% if extra and extra.tracklist %}
+        <div class="bg-cream-100 border border-cream-200 rounded-2xl p-5">
+            <p class="text-xs uppercase tracking-widest text-ink-400 mb-3">Tracklist</p>
+            <ol class="space-y-1.5">
+                {% for track in extra.tracklist %}
+                <li class="flex items-baseline gap-2 text-sm">
+                    <span class="text-ink-400 text-xs w-6 flex-shrink-0">{{ track.pos }}</span>
+                    <span class="text-ink-700 flex-1">{{ track.title }}</span>
+                    {% if track.duration %}
+                    <span class="text-ink-400 text-xs flex-shrink-0">{{ track.duration }}</span>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ol>
+        </div>
+        {% endif %}
+
+        <!-- Videos de YouTube -->
+        {% if extra and extra.videos %}
+        <div class="bg-cream-100 border border-cream-200 rounded-2xl p-5">
+            <p class="text-xs uppercase tracking-widest text-ink-400 mb-3">Videos</p>
+            <div class="space-y-3">
+                {% for video in extra.videos[:4] %}
+                {% set yt_id = video.url.split('v=')[1].split('&')[0] if 'v=' in video.url else (video.url.split('/')[-1] if 'youtu.be' in video.url else '') %}
+                {% if yt_id %}
+                <div>
+                    <div class="rounded-xl overflow-hidden aspect-video mb-1">
+                        <iframe src="https://www.youtube.com/embed/{{ yt_id }}"
+                            class="w-full h-full" frameborder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowfullscreen loading="lazy">
+                        </iframe>
+                    </div>
+                    {% if video.title %}
+                    <p class="text-xs text-ink-400 truncate">{{ video.title }}</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
 
 </div>
+
+<!-- Lightbox de imágenes -->
+{% if extra and extra.images %}
+<div id="lightbox" class="hidden fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onclick="closeLightbox()">
+    <button class="absolute top-4 right-5 text-white text-3xl hover:text-cream-300 transition-all" onclick="closeLightbox()">×</button>
+    <button class="absolute left-4 top-1/2 -translate-y-1/2 text-white text-4xl hover:text-cream-300 transition-all px-2" onclick="event.stopPropagation();prevImage()">‹</button>
+    <img id="lightboxImg" src="" class="max-h-[85vh] max-w-full rounded-xl shadow-2xl object-contain" onclick="event.stopPropagation()" />
+    <button class="absolute right-4 top-1/2 -translate-y-1/2 text-white text-4xl hover:text-cream-300 transition-all px-2" onclick="event.stopPropagation();nextImage()">›</button>
+    <p id="lightboxCounter" class="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/60 text-sm"></p>
+</div>
+
+<script>
+const lbImages = [{% for img in extra.images %}{{ img.url|tojson }}{% if not loop.last %},{% endif %}{% endfor %}];
+let lbIndex = 0;
+
+function openLightbox(i) {
+    lbIndex = i;
+    document.getElementById('lightboxImg').src = lbImages[lbIndex];
+    document.getElementById('lightboxCounter').textContent = `${lbIndex + 1} / ${lbImages.length}`;
+    document.getElementById('lightbox').classList.remove('hidden');
+}
+function closeLightbox() { document.getElementById('lightbox').classList.add('hidden'); }
+function prevImage() { lbIndex = (lbIndex - 1 + lbImages.length) % lbImages.length; openLightbox(lbIndex); }
+function nextImage() { lbIndex = (lbIndex + 1) % lbImages.length; openLightbox(lbIndex); }
+document.addEventListener('keydown', e => {
+    if (document.getElementById('lightbox').classList.contains('hidden')) return;
+    if (e.key === 'ArrowLeft') prevImage();
+    if (e.key === 'ArrowRight') nextImage();
+    if (e.key === 'Escape') closeLightbox();
+});
+</script>
+{% endif %}
+
 {% endblock %}
