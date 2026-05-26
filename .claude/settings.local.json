@@ -4,7 +4,10 @@
       "Bash(docker compose *)",
       "Bash(sudo docker-compose down)",
       "Bash(sudo docker rm -f melomano_web_1)",
-      "Bash(sudo docker rm -f melomano_db_1)"
+      "Bash(sudo docker rm -f melomano_db_1)",
+      "Bash(docker-compose -f /home/toby/develop/Melomano/docker-compose.yml ps)",
+      "Bash(docker exec *)",
+      "Bash(docker cp *)"
     ]
   }
 }
