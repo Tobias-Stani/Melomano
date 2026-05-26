@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, or_, func
+from sqlalchemy import desc, or_, func, case
 
 from app.database import get_db
 from app.models.album import Album
@@ -17,8 +17,18 @@ router    = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
+SORT_OPTIONS = {
+    "artist":    lambda: [Album.artist, Album.year],
+    "year_desc": lambda: [desc(Album.year).nulls_last(), Album.artist],
+    "year_asc":  lambda: [Album.year.nulls_last(), Album.artist],
+    "title":     lambda: [Album.title],
+    "score":     lambda: [desc(Album.score).nulls_last(), Album.artist],
+    "added":     lambda: [desc(Album.created_at)],
+}
+
+
 @router.get("/", response_class=HTMLResponse)
-async def gallery(request: Request, q: str = None, filter: str = "all", fmt: str = "", db: Session = Depends(get_db)):
+async def gallery(request: Request, q: str = None, filter: str = "all", fmt: str = "", sort: str = "artist", db: Session = Depends(get_db)):
     user  = get_current_user(request)
     query = db.query(Album).filter(Album.deleted_at == None)
 
@@ -35,10 +45,24 @@ async def gallery(request: Request, q: str = None, filter: str = "all", fmt: str
     if fmt:
         query = query.filter(Album.format_type.ilike(f"%{fmt}%"))
 
-    albums = query.order_by(Album.artist, Album.year).all()
+    order = SORT_OPTIONS.get(sort, SORT_OPTIONS["artist"])()
+    albums = query.order_by(*order).all()
 
     base = db.query(Album).filter(Album.deleted_at == None)
-    total = base.count()
+
+    # Stats + total en una sola query
+    stats_row = base.with_entities(
+        func.count(Album.id).label("total"),
+        func.sum(case((Album.owned    == True, 1), else_=0)).label("owned"),
+        func.sum(case((Album.listened == True, 1), else_=0)).label("listened"),
+        func.sum(case((Album.wishlist == True, 1), else_=0)).label("wishlist"),
+    ).first()
+    total = stats_row.total or 0
+    stats = {
+        "owned":    stats_row.owned    or 0,
+        "listened": stats_row.listened or 0,
+        "wishlist": stats_row.wishlist or 0,
+    }
 
     # Formatos disponibles y conteos
     fmt_counts_raw = (
@@ -62,13 +86,6 @@ async def gallery(request: Request, q: str = None, filter: str = "all", fmt: str
     )
     genre_counts = {r[0]: r[1] for r in genre_counts_raw}
 
-    # Totales por estado
-    stats = {
-        "owned":    base.filter(Album.owned    == True).count(),
-        "listened": base.filter(Album.listened == True).count(),
-        "wishlist": base.filter(Album.wishlist == True).count(),
-    }
-
     format_types = db.query(FormatType).order_by(FormatType.name).all()
 
     return templates.TemplateResponse("gallery.html", {
@@ -79,6 +96,7 @@ async def gallery(request: Request, q: str = None, filter: str = "all", fmt: str
         "q":           q or "",
         "filter":      filter,
         "fmt":         fmt,
+        "sort":        sort,
         "formats":     formats,
         "fmt_counts":  fmt_counts,
         "genre_counts": genre_counts,

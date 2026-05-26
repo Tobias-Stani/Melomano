@@ -98,11 +98,12 @@
                 class="flex-1 bg-white border border-cream-200 rounded-xl px-4 py-2 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400 transition-all" />
             <input type="hidden" name="filter" value="{{ filter }}" />
             <input type="hidden" name="fmt" value="{{ fmt }}" />
+            <input type="hidden" name="sort" value="{{ sort }}" />
             <button type="submit" class="px-4 py-2 bg-ink-800 text-cream-50 rounded-xl text-sm hover:bg-ink-700 transition-all">Buscar</button>
         </form>
         <div class="flex gap-1 flex-wrap">
             {% for f, label in [('all','Todos'),('owned','Coleccion'),('listened','Escuchados'),('wishlist','Wishlist')] %}
-            <a href="/?filter={{ f }}{% if q %}&q={{ q }}{% endif %}{% if fmt %}&fmt={{ fmt }}{% endif %}"
+            <a href="/?filter={{ f }}{% if q %}&q={{ q }}{% endif %}{% if fmt %}&fmt={{ fmt }}{% endif %}{% if sort != 'artist' %}&sort={{ sort }}{% endif %}"
                 class="px-3 py-1.5 rounded-full text-xs font-500 transition-all
                 {% if filter == f %}bg-ink-800 text-cream-50{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200 border border-cream-200{% endif %}">
                 {{ label }}
@@ -111,23 +112,41 @@
         </div>
     </div>
 
-    <!-- Filtros por formato -->
-    {% if formats %}
-    <div class="flex gap-1.5 flex-wrap">
-        <a href="/?filter={{ filter }}{% if q %}&q={{ q }}{% endif %}"
-            class="px-3 py-1 rounded-full text-xs font-500 transition-all
-            {% if not fmt %}bg-ink-700 text-cream-50{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200 border border-cream-200{% endif %}">
-            Todos
-        </a>
-        {% for f in formats %}
-        <a href="/?filter={{ filter }}&fmt={{ f }}{% if q %}&q={{ q }}{% endif %}"
-            class="px-3 py-1 rounded-full text-xs font-500 transition-all
-            {% if fmt == f %}bg-amber-600 text-white{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200 border border-cream-200{% endif %}">
-            {{ f }} <span class="opacity-60">{{ fmt_counts[f] }}</span>
-        </a>
-        {% endfor %}
+    <!-- Ordenar + filtros por formato -->
+    <div class="flex items-center gap-3 flex-wrap">
+        <form id="sortForm" action="/" method="GET" class="flex items-center gap-2">
+            <input type="hidden" name="filter" value="{{ filter }}" />
+            <input type="hidden" name="fmt" value="{{ fmt }}" />
+            {% if q %}<input type="hidden" name="q" value="{{ q }}" />{% endif %}
+            <span class="text-xs text-ink-400 shrink-0">Ordenar:</span>
+            <select name="sort" onchange="this.form.submit()"
+                class="bg-white border border-cream-200 rounded-xl px-3 py-1.5 text-xs text-ink-700 focus:outline-none focus:ring-2 focus:ring-cream-400 transition-all cursor-pointer">
+                <option value="artist"    {% if sort == 'artist'    %}selected{% endif %}>Artista A-Z</option>
+                <option value="year_desc" {% if sort == 'year_desc' %}selected{% endif %}>Año (más nuevo)</option>
+                <option value="year_asc"  {% if sort == 'year_asc'  %}selected{% endif %}>Año (más antiguo)</option>
+                <option value="title"     {% if sort == 'title'     %}selected{% endif %}>Título A-Z</option>
+                <option value="score"     {% if sort == 'score'     %}selected{% endif %}>Puntuación</option>
+                <option value="added"     {% if sort == 'added'     %}selected{% endif %}>Agregado recientemente</option>
+            </select>
+        </form>
+
+        {% if formats %}
+        <div class="flex gap-1.5 flex-wrap">
+            <a href="/?filter={{ filter }}{% if q %}&q={{ q }}{% endif %}{% if sort != 'artist' %}&sort={{ sort }}{% endif %}"
+                class="px-3 py-1 rounded-full text-xs font-500 transition-all
+                {% if not fmt %}bg-ink-700 text-cream-50{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200 border border-cream-200{% endif %}">
+                Todos
+            </a>
+            {% for f in formats %}
+            <a href="/?filter={{ filter }}&fmt={{ f }}{% if q %}&q={{ q }}{% endif %}{% if sort != 'artist' %}&sort={{ sort }}{% endif %}"
+                class="px-3 py-1 rounded-full text-xs font-500 transition-all
+                {% if fmt == f %}bg-amber-600 text-white{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200 border border-cream-200{% endif %}">
+                {{ f }} <span class="opacity-60">{{ fmt_counts[f] }}</span>
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
-    {% endif %}
 </div>
 
 <!-- Grilla de albums -->

@@ -24,7 +24,6 @@ async def fetch_collection_page(page: int = 1, per_page: int = 100) -> dict:
     url = f"{BASE_URL}/users/{DISCOGS_USERNAME}/collection/folders/0/releases"
     params = {"page": page, "per_page": per_page, "sort": "added", "sort_order": "desc"}
     async with httpx.AsyncClient(timeout=30) as client:
-        resp = client.get(url, headers=_headers(), params=params)  # sync inside async ok for single call
         resp = await client.get(url, headers=_headers(), params=params)
         resp.raise_for_status()
         return resp.json()
