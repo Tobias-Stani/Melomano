@@ -28,7 +28,7 @@ SORT_OPTIONS = {
 
 
 @router.get("/", response_class=HTMLResponse)
-async def gallery(request: Request, q: str = None, filter: str = "all", fmt: str = "", sort: str = "artist", db: Session = Depends(get_db)):
+async def gallery(request: Request, q: str = None, filter: str = "all", fmt: str = "", sort: str = "added", db: Session = Depends(get_db)):
     user  = get_current_user(request)
     query = db.query(Album).filter(Album.deleted_at == None)
 
