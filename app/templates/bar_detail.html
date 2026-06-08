@@ -3,6 +3,18 @@
 
 {% block content %}
 
+{% if private %}
+<div class="flex flex-col items-center justify-center py-32 text-center">
+    <div class="text-8xl mb-6 select-none">🚫👁</div>
+    <h2 class="font-serif text-2xl font-700 text-ink-800 mb-2">Sección privada</h2>
+    <p class="text-ink-400 text-sm mb-8 max-w-xs">El detalle de los bares Hifi es exclusivo para miembros. Ingresá para ver toda la información.</p>
+    <div class="flex gap-3">
+        <a href="/login" class="px-6 py-2.5 bg-ink-800 text-cream-50 rounded-xl text-sm font-500 hover:bg-ink-700 transition-all">Ingresar</a>
+        <a href="/bares" class="px-6 py-2.5 border border-cream-300 text-ink-600 rounded-xl text-sm font-500 hover:bg-cream-200 transition-all">← Volver a bares</a>
+    </div>
+</div>
+{% else %}
+
 <!-- Banner full-width -->
 <div class="relative -mx-6 -mt-8" style="height:280px">
     {% if bar.banner_url %}
@@ -330,4 +342,5 @@ let _tx=0;
 document.getElementById('lightbox').addEventListener('touchstart', e => _tx=e.touches[0].clientX);
 document.getElementById('lightbox').addEventListener('touchend',   e => { const dx=e.changedTouches[0].clientX-_tx; if(Math.abs(dx)>50) stepLightbox(dx<0?1:-1); });
 </script>
+{% endif %}
 {% endblock %}
