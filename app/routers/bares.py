@@ -41,7 +41,10 @@ def _maps_embed(bar: HifiBar) -> str:
 @router.get("/bares", response_class=HTMLResponse)
 async def bares_list(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request)
-    bars = db.query(HifiBar).order_by(HifiBar.name).all()
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    user_obj = db.query(User).filter(User.username == user).first()
+    bars = db.query(HifiBar).filter(HifiBar.user_id == user_obj.id).order_by(HifiBar.name).all()
     return templates.TemplateResponse("bares.html", {
         "request": request, "user": user, "bars": bars,
     })
@@ -70,9 +73,12 @@ async def bar_create(
     description: str = Form(""),
     db: Session      = Depends(get_db),
 ):
-    if not get_current_user(request):
+    username = get_current_user(request)
+    if not username:
         return RedirectResponse(url="/login", status_code=302)
+    user_obj = db.query(User).filter(User.username == username).first()
     bar = HifiBar(
+        user_id=user_obj.id if user_obj else None,
         name=name,
         address=address or None,
         city=city or None,
@@ -91,7 +97,10 @@ async def bar_create(
 @router.get("/bares/{bar_id}", response_class=HTMLResponse)
 async def bar_detail(bar_id: int, request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request)
-    bar  = db.query(HifiBar).filter(HifiBar.id == bar_id).first()
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    user_obj = db.query(User).filter(User.username == user).first()
+    bar  = db.query(HifiBar).filter(HifiBar.id == bar_id, HifiBar.user_id == user_obj.id).first()
     if not bar:
         raise HTTPException(status_code=404)
     active_photos = [p for p in bar.photos if p.deleted_at is None]
