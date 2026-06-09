@@ -93,10 +93,6 @@ async def bar_detail(bar_id: int, request: Request, db: Session = Depends(get_db
     bar  = db.query(HifiBar).filter(HifiBar.id == bar_id).first()
     if not bar:
         raise HTTPException(status_code=404)
-    if not user:
-        return templates.TemplateResponse("bar_detail.html", {
-            "request": request, "user": None, "bar": bar, "private": True,
-        })
     active_photos = [p for p in bar.photos if p.deleted_at is None]
     is_featured   = bool(user and db.query(FeaturedItem).filter(
         FeaturedItem.type == "bar", FeaturedItem.item_id == bar_id

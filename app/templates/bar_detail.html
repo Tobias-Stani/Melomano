@@ -112,8 +112,16 @@
     {% endif %}
 
     <!-- Visitas -->
-    <section id="visitas" class="mb-10">
+    <section id="visitas" class="mb-10 relative">
         <p class="text-xs uppercase tracking-widest text-ink-400 mb-5">Visitas</p>
+        {% if not user %}
+        <div class="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-2xl bg-black/20 backdrop-blur-none">
+            <span class="text-5xl mb-3">🔒</span>
+            <p class="text-sm font-500 text-ink-700 mb-3">Ingresá para ver las visitas</p>
+            <a href="/login" class="px-5 py-2 bg-ink-800 text-cream-50 rounded-xl text-sm hover:bg-ink-700 transition-all">Ingresar</a>
+        </div>
+        <div class="blur-md pointer-events-none select-none min-h-[120px]">
+        {% endif %}
 
         {% if bar.visits %}
         <div class="space-y-3 mb-6">
@@ -191,11 +199,20 @@
             </form>
         </details>
         {% endif %}
+        {% if not user %}</div>{% endif %}
     </section>
 
     <!-- Fotos -->
-    <section id="fotos" class="mb-8">
+    <section id="fotos" class="mb-8 relative">
         <p class="text-xs uppercase tracking-widest text-ink-400 mb-4">Fotos</p>
+        {% if not user %}
+        <div class="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-2xl bg-black/20 backdrop-blur-none">
+            <span class="text-5xl mb-3">🔒</span>
+            <p class="text-sm font-500 text-ink-700 mb-3">Ingresá para ver las fotos</p>
+            <a href="/login" class="px-5 py-2 bg-ink-800 text-cream-50 rounded-xl text-sm hover:bg-ink-700 transition-all">Ingresar</a>
+        </div>
+        <div class="blur-md pointer-events-none select-none min-h-[200px]">
+        {% endif %}
 
         {% if active_photos %}
         {% if user %}
@@ -266,6 +283,7 @@
             </button>
         </form>
         {% endif %}
+        {% if not user %}</div>{% endif %}
     </section>
 
     {% if user %}
@@ -306,9 +324,11 @@
     </div>
     <button onclick="stepLightbox(1)" class="absolute right-3 sm:right-6 text-white/70 hover:text-white text-4xl leading-none z-10 select-none">&#8250;</button>
 </div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
+{% if not private %}
 <script>
 const _photos = [
     {% for photo in active_photos %}
@@ -344,3 +364,4 @@ document.getElementById('lightbox').addEventListener('touchend',   e => { const 
 </script>
 {% endif %}
 {% endblock %}
+

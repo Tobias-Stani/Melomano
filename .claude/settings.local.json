@@ -7,7 +7,8 @@
       "Bash(sudo docker rm -f melomano_db_1)",
       "Bash(docker-compose -f /home/toby/develop/Melomano/docker-compose.yml ps)",
       "Bash(docker exec *)",
-      "Bash(docker cp *)"
+      "Bash(docker cp *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:4000/bares/1)"
     ]
   }
 }
