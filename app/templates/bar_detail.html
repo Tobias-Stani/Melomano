@@ -91,7 +91,7 @@
             {% endif %}
             <div class="flex items-center gap-2 mt-3">
                 <span class="text-xs bg-cream-200 text-ink-600 px-2.5 py-0.5 rounded-full">
-                    {{ bar.visits|length }} visita{% if bar.visits|length != 1 %}s{% endif %}
+                    {{ user_visits|length }} visita{% if user_visits|length != 1 %}s{% endif %}
                 </span>
                 {% if bar.maps_url or bar.address %}
                 <a href="{{ bar.maps_url or 'https://maps.google.com/maps?q=' ~ bar.address }}" target="_blank"
@@ -123,9 +123,9 @@
         <div class="blur-md pointer-events-none select-none min-h-[120px]">
         {% endif %}
 
-        {% if bar.visits %}
+        {% if user_visits %}
         <div class="space-y-3 mb-6">
-            {% for visit in bar.visits %}
+            {% for visit in user_visits %}
             <div class="bg-cream-100 border border-cream-200 rounded-2xl p-4">
                 <div class="flex items-start justify-between gap-3 flex-wrap">
                     <div class="flex-1">

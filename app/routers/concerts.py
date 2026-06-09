@@ -22,8 +22,11 @@ EMOJIS = {1:'😞',2:'😔',3:'😐',4:'🙂',5:'😊',6:'😁',7:'🤩',8:'🔥
 
 @router.get("/concerts", response_class=HTMLResponse)
 async def concerts_list(request: Request, db: Session = Depends(get_db)):
-    user     = get_current_user(request)
-    concerts = db.query(Concert).order_by(desc(Concert.date)).all()
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    user_obj = db.query(User).filter(User.username == user).first()
+    concerts = db.query(Concert).filter(Concert.user_id == user_obj.id).order_by(desc(Concert.date)).all()
     return templates.TemplateResponse("concerts.html", {
         "request": request, "user": user, "concerts": concerts, "emojis": EMOJIS,
     })

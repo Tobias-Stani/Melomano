@@ -98,6 +98,11 @@ async def bar_detail(bar_id: int, request: Request, db: Session = Depends(get_db
     is_featured   = bool(user and db.query(FeaturedItem).filter(
         FeaturedItem.type == "bar", FeaturedItem.item_id == bar_id
     ).first())
+    user_obj = db.query(User).filter(User.username == user).first() if user else None
+    user_visits = db.query(BarVisit).filter(
+        BarVisit.bar_id == bar_id,
+        BarVisit.user_id == user_obj.id
+    ).order_by(desc(BarVisit.date)).all() if user_obj else []
     return templates.TemplateResponse("bar_detail.html", {
         "request":       request,
         "user":          user,
@@ -107,6 +112,7 @@ async def bar_detail(bar_id: int, request: Request, db: Session = Depends(get_db
         "maps_embed":    _maps_embed(bar),
         "today":         datetime.date.today().isoformat(),
         "is_featured":   is_featured,
+        "user_visits":   user_visits,
     })
 
 
