@@ -66,8 +66,8 @@ def _parse_release(item: dict) -> dict:
     }
 
 
-async def sync_collection(db: Session) -> SyncLog:
-    """Sincroniza toda la coleccion de Discogs. Crea o actualiza albums."""
+async def sync_collection(db: Session, user_id: int = None) -> SyncLog:
+    """Sincroniza toda la coleccion de Discogs para un usuario."""
     log = SyncLog(status="running", source="discogs")
     db.add(log)
     db.commit()
@@ -89,7 +89,9 @@ async def sync_collection(db: Session) -> SyncLog:
                 if not disc_id:
                     continue
 
-                existing = db.query(Album).filter(Album.discogs_id == disc_id).first()
+                existing = db.query(Album).filter(
+                    Album.discogs_id == disc_id, Album.user_id == user_id
+                ).first()
                 if existing:
                     # Actualiza metadatos pero preserva score/review del usuario
                     existing.title       = parsed["title"]
@@ -106,6 +108,7 @@ async def sync_collection(db: Session) -> SyncLog:
                 else:
                     album = Album(
                         **parsed,
+                        user_id=user_id,
                         owned=True,
                         listened=False,
                         wishlist=False,

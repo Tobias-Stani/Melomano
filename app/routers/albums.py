@@ -10,8 +10,13 @@ from app.database import get_db
 from app.models.album import Album
 from app.models.featured import FeaturedItem
 from app.models.format_type import FormatType
+from app.models.user import User
 from app.auth import get_current_user
 from app.services.discogs import sync_collection, search_discogs, fetch_release_details, search_by_barcode
+
+
+def _get_user_obj(username: str, db: Session):
+    return db.query(User).filter(User.username == username).first()
 
 router    = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -29,8 +34,13 @@ SORT_OPTIONS = {
 
 @router.get("/", response_class=HTMLResponse)
 async def gallery(request: Request, q: str = None, filter: str = "all", fmt: str = "", sort: str = "added", db: Session = Depends(get_db)):
-    user  = get_current_user(request)
-    query = db.query(Album).filter(Album.deleted_at == None)
+    username = get_current_user(request)
+    if not username:
+        return RedirectResponse(url="/perfil", status_code=302)
+    user_obj = _get_user_obj(username, db)
+    uid = user_obj.id if user_obj else None
+
+    query = db.query(Album).filter(Album.deleted_at == None, Album.user_id == uid)
 
     if q:
         query = query.filter(or_(Album.title.ilike(f"%{q}%"), Album.artist.ilike(f"%{q}%")))
@@ -48,7 +58,7 @@ async def gallery(request: Request, q: str = None, filter: str = "all", fmt: str
     order = SORT_OPTIONS.get(sort, SORT_OPTIONS["artist"])()
     albums = query.order_by(*order).all()
 
-    base = db.query(Album).filter(Album.deleted_at == None)
+    base = db.query(Album).filter(Album.deleted_at == None, Album.user_id == uid)
 
     # Stats + total en una sola query
     stats_row = base.with_entities(
@@ -98,7 +108,7 @@ async def gallery(request: Request, q: str = None, filter: str = "all", fmt: str
 
     return templates.TemplateResponse("gallery.html", {
         "request":     request,
-        "user":        user,
+        "user":        username,
         "albums":      albums,
         "total":       total,
         "q":           q or "",
@@ -226,9 +236,12 @@ async def delete_album(album_id: int, request: Request, db: Session = Depends(ge
 # ── Sync Discogs ─────────────────────────────────────────
 @router.post("/sync/discogs")
 async def trigger_sync(request: Request, db: Session = Depends(get_db)):
-    if not get_current_user(request):
+    username = get_current_user(request)
+    if not username:
         return RedirectResponse(url="/login", status_code=302)
-    log = await sync_collection(db)
+    user_obj = _get_user_obj(username, db)
+    uid = user_obj.id if user_obj else None
+    log = await sync_collection(db, user_id=uid)
     return RedirectResponse(url=f"/sync/status?log_id={log.id}", status_code=303)
 
 
@@ -280,17 +293,23 @@ async def add_album_manually(
     discogs_url: str = Form(""),
     db: Session = Depends(get_db),
 ):
-    if not get_current_user(request):
+    username = get_current_user(request)
+    if not username:
         return RedirectResponse(url="/login", status_code=302)
+    user_obj = _get_user_obj(username, db)
+    uid = user_obj.id if user_obj else None
 
-    # Verificar si ya existe
+    # Verificar si ya existe para este usuario
     if discogs_id:
-        existing = db.query(Album).filter(Album.discogs_id == discogs_id, Album.deleted_at == None).first()
+        existing = db.query(Album).filter(
+            Album.discogs_id == discogs_id, Album.user_id == uid, Album.deleted_at == None
+        ).first()
         if existing:
             return RedirectResponse(url=f"/album/{existing.id}", status_code=303)
 
     album = Album(
         discogs_id=discogs_id,
+        user_id=uid,
         title=title,
         artist=artist,
         year=year or None,

@@ -1,12 +1,18 @@
-from sqlalchemy import Column, Integer, String, Text, Date, DateTime, Boolean, Float
+from sqlalchemy import Column, Integer, String, Text, Date, DateTime, Boolean, Float, ForeignKey, UniqueConstraint
 from sqlalchemy.sql import func
 from app.database import Base
 
 
 class Album(Base):
     __tablename__ = "albums"
+    __table_args__ = (
+        UniqueConstraint("discogs_id", "user_id", name="uq_album_discogs_user"),
+    )
 
     id              = Column(Integer, primary_key=True, index=True)
+
+    # Propietario
+    user_id         = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
 
     # Metadatos musicales
     title           = Column(Text, nullable=False)
@@ -18,7 +24,7 @@ class Album(Base):
     formats         = Column(Text, nullable=True)
 
     # Origen
-    discogs_id      = Column(Integer, unique=True, nullable=True, index=True)
+    discogs_id      = Column(Integer, nullable=True, index=True)
     discogs_url     = Column(Text, nullable=True)
 
     # Estado en la coleccion
