@@ -14,6 +14,7 @@ from app.models.bar_visit import BarVisit
 from app.models.bar_photo import BarPhoto
 from app.models.featured import FeaturedItem
 from app.auth import get_current_user
+from app.models.user import User
 
 router    = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -171,9 +172,12 @@ async def visit_add(
     score: int   = Form(None),
     db: Session  = Depends(get_db),
 ):
-    if not get_current_user(request):
+    username = get_current_user(request)
+    if not username:
         return RedirectResponse(url="/login", status_code=302)
+    user_obj = db.query(User).filter(User.username == username).first()
     visit = BarVisit(
+        user_id=user_obj.id if user_obj else None,
         bar_id=bar_id,
         date=datetime.date.fromisoformat(date),
         drinks=drinks or None,

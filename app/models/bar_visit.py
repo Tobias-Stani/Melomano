@@ -8,6 +8,7 @@ class BarVisit(Base):
     __tablename__ = "bar_visits"
 
     id         = Column(Integer, primary_key=True, index=True)
+    user_id    = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     bar_id     = Column(Integer, ForeignKey("hifi_bars.id", ondelete="CASCADE"), nullable=False, index=True)
     date       = Column(Date, nullable=False)
     drinks     = Column(Text, nullable=True)   # que tomo

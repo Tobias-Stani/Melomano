@@ -12,6 +12,7 @@ from app.models.concert import Concert
 from app.models.concert_photo import ConcertPhoto
 from app.models.featured import FeaturedItem
 from app.auth import get_current_user
+from app.models.user import User
 
 router    = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -54,10 +55,13 @@ async def concert_create(
     cover_url: str = Form(""),
     db: Session    = Depends(get_db),
 ):
-    if not get_current_user(request):
+    username = get_current_user(request)
+    if not username:
         return RedirectResponse(url="/login", status_code=302)
+    user_obj = db.query(User).filter(User.username == username).first()
 
     concert = Concert(
+        user_id=user_obj.id if user_obj else None,
         artist=artist,
         date=datetime.date.fromisoformat(date),
         venue=venue or None,

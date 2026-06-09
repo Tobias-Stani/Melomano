@@ -153,11 +153,12 @@ async def perfil_usuario(username: str, request: Request, db: Session = Depends(
         return RedirectResponse(url="/perfil", status_code=302)
     albums, concerts, bars = _load_featured(db, profile.id)
 
-    last_album   = db.query(Album).order_by(Album.created_at.desc()).first()
-    last_concert = db.query(Concert).order_by(Concert.date.desc()).first()
+    last_album   = db.query(Album).filter(Album.user_id == profile.id, Album.deleted_at == None).order_by(Album.created_at.desc()).first()
+    last_concert = db.query(Concert).filter(Concert.user_id == profile.id).order_by(Concert.date.desc()).first()
     last_visit   = (
         db.query(BarVisit)
         .join(HifiBar, BarVisit.bar_id == HifiBar.id)
+        .filter(BarVisit.user_id == profile.id)
         .order_by(BarVisit.date.desc())
         .first()
     )
