@@ -111,8 +111,16 @@
     {% endif %}
 
     <!-- Galeria de fotos -->
-    <div id="fotos" class="mt-8 pt-6 border-t border-cream-200">
+    <section id="fotos" class="mt-8 pt-6 border-t border-cream-200 relative">
         <p class="text-xs uppercase tracking-widest text-ink-400 mb-4">Fotos del recital</p>
+        {% if not user %}
+        <div class="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-2xl bg-black/20 backdrop-blur-none">
+            <span class="text-5xl mb-3">🔒</span>
+            <p class="text-sm font-500 text-ink-700 mb-3">Ingresá para ver las fotos</p>
+            <a href="/login" class="px-5 py-2 bg-ink-800 text-cream-50 rounded-xl text-sm hover:bg-ink-700 transition-all">Ingresar</a>
+        </div>
+        <div class="blur-md pointer-events-none select-none min-h-[200px]">
+        {% endif %}
 
         {% if active_photos %}
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
@@ -131,20 +139,13 @@
                 <div class="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all">
                     <a href="/concerts/{{ concert.id }}/photos/{{ photo.id }}/set-cover"
                         title="Usar como portada"
-                        class="bg-black/60 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center hover:bg-amber-500">
-                        ★
-                    </a>
+                        class="bg-black/60 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center hover:bg-amber-500">★</a>
                     <a href="/concerts/{{ concert.id }}/photos/{{ photo.id }}/set-banner"
                         title="Usar como banner de fondo"
-                        class="bg-black/60 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center hover:bg-sky-500">
-                        🖼
-                    </a>
+                        class="bg-black/60 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center hover:bg-sky-500">🖼</a>
                     <a href="/concerts/{{ concert.id }}/photos/{{ photo.id }}/delete"
-                        onclick="return confirm('Eliminar esta foto?')"
-                        title="Eliminar foto"
-                        class="bg-black/60 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600">
-                        &times;
-                    </a>
+                        onclick="return confirm('Eliminar esta foto?')" title="Eliminar foto"
+                        class="bg-black/60 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600">&times;</a>
                 </div>
                 {% endif %}
             </div>
@@ -159,11 +160,9 @@
             class="bg-cream-100 border border-cream-200 rounded-2xl p-4">
             <p class="text-xs uppercase tracking-widest text-ink-400 mb-3">Subir fotos</p>
             <div class="space-y-3">
-                <div>
-                    <input type="file" name="photos" multiple accept="image/*"
-                        class="w-full text-sm text-ink-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-ink-800 file:text-cream-50 file:text-xs file:cursor-pointer hover:file:bg-ink-700" />
-                    <p class="text-xs text-ink-300 mt-1">Podés seleccionar varias fotos a la vez.</p>
-                </div>
+                <input type="file" name="photos" multiple accept="image/*"
+                    class="w-full text-sm text-ink-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-ink-800 file:text-cream-50 file:text-xs file:cursor-pointer hover:file:bg-ink-700" />
+                <p class="text-xs text-ink-300">Podés seleccionar varias fotos a la vez.</p>
                 <button type="submit"
                     class="px-5 py-2 bg-ink-800 text-cream-50 rounded-xl text-sm hover:bg-ink-700 transition-all">
                     Subir
@@ -171,7 +170,8 @@
             </div>
         </form>
         {% endif %}
-    </div>
+        {% if not user %}</div>{% endif %}
+    </section>
 
     {% if user %}
     <div class="flex gap-3 mt-8 pt-6 border-t border-cream-200 flex-wrap">
