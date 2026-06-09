@@ -97,6 +97,17 @@
             </blockquote>
             {% endif %}
 
+            {% if fav_track %}
+            <div class="flex items-center gap-3 bg-amber-400 border border-amber-300 rounded-2xl px-4 py-3 mb-4">
+                <span class="text-white text-xl flex-shrink-0">★</span>
+                <div class="min-w-0">
+                    <p class="text-xs uppercase tracking-widest text-amber-800 mb-0.5">Canción favorita</p>
+                    <p class="text-sm font-700 text-white truncate">{{ fav_track.track_title }}</p>
+                    <p class="text-xs text-amber-800">Pista {{ fav_track.track_pos }}</p>
+                </div>
+            </div>
+            {% endif %}
+
             {% if user %}
             <div class="flex items-center gap-3 mt-2 flex-wrap">
                 <a href="/album/{{ album.id }}/edit"
@@ -137,17 +148,31 @@
         {% if extra and extra.tracklist %}
         <div class="bg-cream-100 border border-cream-200 rounded-2xl p-5">
             <p class="text-xs uppercase tracking-widest text-ink-400 mb-3">Tracklist</p>
-            <ol class="space-y-1.5">
+            <ol class="space-y-1">
                 {% for track in extra.tracklist %}
-                <li class="flex items-baseline gap-2 text-sm">
+                {% set is_fav = fav_track and fav_track.track_pos == track.pos %}
+                <li class="flex items-center gap-2 text-sm py-1 rounded-lg px-1 {% if is_fav %}bg-amber-50{% endif %}">
                     <span class="text-ink-400 text-xs w-6 flex-shrink-0">{{ track.pos }}</span>
-                    <span class="text-ink-700 flex-1">{{ track.title }}</span>
+                    <span class="flex-1 {% if is_fav %}text-amber-700 font-500{% else %}text-ink-700{% endif %}">{{ track.title }}</span>
                     {% if track.duration %}
                     <span class="text-ink-400 text-xs flex-shrink-0">{{ track.duration }}</span>
+                    {% endif %}
+                    {% if user %}
+                    <button
+                        data-pos="{{ track.pos }}"
+                        data-title="{{ track.title|e }}"
+                        onclick="toggleFavTrack(this)"
+                        class="text-base leading-none transition-all flex-shrink-0 {% if is_fav %}text-amber-400 hover:text-ink-300{% else %}text-ink-200 hover:text-amber-400{% endif %}"
+                        title="{% if is_fav %}Quitar favorita{% else %}Marcar como favorita{% endif %}">
+                        ★
+                    </button>
                     {% endif %}
                 </li>
                 {% endfor %}
             </ol>
+            {% if fav_track %}
+            <p class="text-xs text-amber-600 mt-3 pt-3 border-t border-cream-200">★ Favorita: {{ fav_track.track_title }}</p>
+            {% endif %}
         </div>
         {% endif %}
 
@@ -180,6 +205,18 @@
     </div>
 
 </div>
+
+{% if user %}
+<script>
+async function toggleFavTrack(btn) {
+    const form = new FormData();
+    form.append('track_pos',   btn.dataset.pos);
+    form.append('track_title', btn.dataset.title);
+    const resp = await fetch('/album/{{ album.id }}/favorite-track', { method: 'POST', body: form });
+    if (resp.ok) location.reload();
+}
+</script>
+{% endif %}
 
 <!-- Lightbox de imágenes -->
 {% if extra and extra.images %}

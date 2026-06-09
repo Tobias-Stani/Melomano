@@ -11,6 +11,7 @@ from app.models import featured       # noqa: F401
 from app.models import user as user_model  # noqa: F401
 from app.models import hifi_bar, bar_visit, bar_photo  # noqa: F401
 from app.models import format_type    # noqa: F401
+from app.models import favorite_track  # noqa: F401
 from app.models.user import User
 from app.models.featured import FeaturedItem
 from app.auth import hash_password

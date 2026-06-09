@@ -13,6 +13,8 @@ from app.models.format_type import FormatType
 from app.models.user import User
 from app.auth import get_current_user
 from app.services.discogs import sync_collection, search_discogs, fetch_release_details, search_by_barcode
+from app.models.favorite_track import FavoriteTrack
+from app.models.user import User
 
 
 def _get_user_obj(username: str, db: Session):
@@ -135,10 +137,15 @@ async def album_detail(album_id: int, request: Request, db: Session = Depends(ge
     ).first() is not None
     format_types = db.query(FormatType).order_by(FormatType.name).all()
     discogs_extra = await fetch_release_details(album.discogs_id) if album.discogs_id else None
+    user_obj = db.query(User).filter(User.username == user).first() if user else None
+    fav_track = db.query(FavoriteTrack).filter(
+        FavoriteTrack.album_id == album_id,
+        FavoriteTrack.user_id == user_obj.id,
+    ).first() if user_obj else None
     return templates.TemplateResponse("album_detail.html", {
         "request": request, "user": user, "album": album,
         "is_featured": is_featured, "format_types": format_types,
-        "extra": discogs_extra,
+        "extra": discogs_extra, "fav_track": fav_track,
     })
 
 
@@ -267,6 +274,35 @@ async def discogs_search(request: Request, q: str = "", db: Session = Depends(ge
         return JSONResponse([])
     results = await search_discogs(q)
     return JSONResponse(results)
+
+
+@router.post("/album/{album_id}/favorite-track")
+async def set_favorite_track(
+    album_id: int, request: Request,
+    track_pos: str = Form(...),
+    track_title: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    username = get_current_user(request)
+    if not username:
+        return JSONResponse({"error": "no autorizado"}, status_code=401)
+    user_obj = db.query(User).filter(User.username == username).first()
+
+    existing = db.query(FavoriteTrack).filter(
+        FavoriteTrack.album_id == album_id,
+        FavoriteTrack.user_id == user_obj.id,
+    ).first()
+
+    if existing and existing.track_pos == track_pos:
+        db.delete(existing)
+    elif existing:
+        existing.track_pos   = track_pos
+        existing.track_title = track_title
+    else:
+        db.add(FavoriteTrack(user_id=user_obj.id, album_id=album_id, track_pos=track_pos, track_title=track_title))
+
+    db.commit()
+    return JSONResponse({"ok": True})
 
 
 @router.get("/search/barcode")
