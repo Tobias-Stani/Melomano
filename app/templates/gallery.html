@@ -168,6 +168,11 @@
                 {% if album.owned %}<span class="text-xs bg-black/50 text-white px-1.5 py-0.5 rounded-full">💿</span>{% endif %}
                 {% if album.wishlist %}<span class="text-xs bg-black/50 text-white px-1.5 py-0.5 rounded-full">🔖</span>{% endif %}
             </div>
+            {% if album.id == most_recent_id %}
+            <div class="absolute top-2 left-2">
+                <span class="text-xs bg-emerald-500 text-white px-2 py-0.5 rounded-full font-500 shadow-sm">✨ Nuevo</span>
+            </div>
+            {% endif %}
 
             <!-- Score overlay -->
             {% if album.score %}

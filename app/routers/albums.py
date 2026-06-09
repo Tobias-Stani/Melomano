@@ -88,6 +88,14 @@ async def gallery(request: Request, q: str = None, filter: str = "all", fmt: str
 
     format_types = db.query(FormatType).order_by(FormatType.name).all()
 
+    most_recent_id = (
+        db.query(Album.id)
+        .filter(Album.deleted_at == None)
+        .order_by(desc(Album.created_at))
+        .limit(1)
+        .scalar()
+    )
+
     return templates.TemplateResponse("gallery.html", {
         "request":     request,
         "user":        user,
@@ -100,8 +108,9 @@ async def gallery(request: Request, q: str = None, filter: str = "all", fmt: str
         "formats":     formats,
         "fmt_counts":  fmt_counts,
         "genre_counts": genre_counts,
-        "stats":       stats,
+        "stats":        stats,
         "format_types": format_types,
+        "most_recent_id": most_recent_id,
     })
 
 
