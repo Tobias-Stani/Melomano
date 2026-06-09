@@ -1,5 +1,7 @@
 import json
-from datetime import datetime, timezone
+import hashlib
+import random
+from datetime import datetime, timezone, date
 from fastapi import APIRouter, Depends, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -38,8 +40,10 @@ SORT_OPTIONS = {
 async def gallery(request: Request, q: str = None, filter: str = "all", fmt: str = "", sort: str = "added", db: Session = Depends(get_db)):
     username = get_current_user(request)
     if not username:
-        return RedirectResponse(url="/perfil", status_code=302)
-    user_obj = _get_user_obj(username, db)
+        # Vista publica: mostrar la coleccion del admin
+        user_obj = db.query(User).filter(User.is_admin == True).first()
+    else:
+        user_obj = _get_user_obj(username, db)
     uid = user_obj.id if user_obj else None
 
     query = db.query(Album).filter(Album.deleted_at == None, Album.user_id == uid)
@@ -111,6 +115,7 @@ async def gallery(request: Request, q: str = None, filter: str = "all", fmt: str
     return templates.TemplateResponse("gallery.html", {
         "request":     request,
         "user":        username,
+        "user_obj":    user_obj,
         "albums":      albums,
         "total":       total,
         "q":           q or "",
@@ -360,3 +365,190 @@ async def add_album_manually(
     db.commit()
     db.refresh(album)
     return RedirectResponse(url=f"/album/{album.id}", status_code=303)
+
+
+# ── Duelo de discos ──────────────────────────────────────
+@router.get("/api/duel")
+async def duel_albums(
+    request: Request,
+    fmt: str = "",
+    genre: str = "",
+    year_from: int = None,
+    year_to: int = None,
+    db: Session = Depends(get_db),
+):
+    username = get_current_user(request)
+
+    base = db.query(Album).filter(Album.deleted_at == None)
+    if username:
+        user_obj = _get_user_obj(username, db)
+        base = base.filter(Album.user_id == user_obj.id)
+    else:
+        admin = db.query(User).filter(User.is_admin == True).first()
+        if admin:
+            base = base.filter(Album.user_id == admin.id)
+
+    if fmt:
+        base = base.filter(Album.format_type.ilike(f"%{fmt}%"))
+    if genre:
+        base = base.filter(Album.genre.ilike(f"%{genre}%"))
+    if year_from is not None:
+        base = base.filter(Album.year >= year_from)
+    if year_to is not None:
+        base = base.filter(Album.year <= year_to)
+
+    ids = [r[0] for r in base.with_entities(Album.id).all()]
+    if len(ids) < 2:
+        return JSONResponse({"error": "Se necesitan al menos 2 discos"})
+
+    picked = random.sample(ids, 2)
+    albums = db.query(Album).filter(Album.id.in_(picked)).all()
+    result = []
+    for a in albums:
+        result.append({
+            "id": a.id,
+            "title": a.title,
+            "artist": a.artist,
+            "year": a.year,
+            "cover_url": a.cover_url,
+            "format_type": a.format_type,
+            "score": a.score,
+        })
+    return JSONResponse(result)
+
+
+# ── Slot machine ─────────────────────────────────────────
+@router.get("/api/slot")
+async def slot_machine(request: Request, db: Session = Depends(get_db)):
+    username = get_current_user(request)
+
+    base = db.query(Album).filter(Album.deleted_at == None)
+    if username:
+        user_obj = _get_user_obj(username, db)
+        base = base.filter(Album.user_id == user_obj.id)
+    else:
+        admin = db.query(User).filter(User.is_admin == True).first()
+        if admin:
+            base = base.filter(Album.user_id == admin.id)
+
+    ids = [r[0] for r in base.with_entities(Album.id).all()]
+    if len(ids) < 1:
+        return JSONResponse({"error": "No hay discos"})
+
+    # Elegir 3 discos (podría repetirse para jackpot)
+    picked = [random.choice(ids) for _ in range(3)]
+    albums = db.query(Album).filter(Album.id.in_(picked)).all()
+
+    # Mapear id -> album para mantener el orden de picked (con repeticiones)
+    album_map = {a.id: a for a in albums}
+    result = []
+    for pid in picked:
+        a = album_map[pid]
+        result.append({
+            "id": a.id,
+            "title": a.title,
+            "artist": a.artist,
+            "year": a.year,
+            "cover_url": a.cover_url,
+            "format_type": a.format_type,
+            "score": a.score,
+        })
+
+    # Detectar jackpot: los 3 tienen el mismo id
+    is_jackpot = len(set(picked)) == 1
+
+    return JSONResponse({"reels": result, "jackpot": is_jackpot})
+
+
+# ── Quiz: adivina la portada ────────────────────────────
+@router.get("/api/quiz")
+async def quiz_album(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    username = get_current_user(request)
+
+    base = db.query(Album).filter(Album.deleted_at == None, Album.cover_url != None)
+    if username:
+        user_obj = _get_user_obj(username, db)
+        base = base.filter(Album.user_id == user_obj.id)
+    else:
+        admin = db.query(User).filter(User.is_admin == True).first()
+        if admin:
+            base = base.filter(Album.user_id == admin.id)
+
+    ids = [r[0] for r in base.with_entities(Album.id).all()]
+    if len(ids) < 3:
+        return JSONResponse({"error": "Se necesitan al menos 3 discos con portada"})
+
+    picked = random.sample(ids, 3)
+    albums = db.query(Album).filter(Album.id.in_(picked)).all()
+    album_map = {a.id: a for a in albums}
+
+    # El primero es el correcto
+    correct = album_map[picked[0]]
+    options = []
+    for pid in picked:
+        a = album_map[pid]
+        options.append({
+            "id": a.id,
+            "title": a.title,
+            "artist": a.artist,
+        })
+
+    random.shuffle(options)
+
+    return JSONResponse({
+        "cover_url": correct.cover_url,
+        "options": options,
+        "correct_id": correct.id,
+    })
+
+
+# ── Recomendación del día ───────────────────────────────
+REASONS = [
+    "Porque hoy merecés algo increíble 🎧",
+    "Un clásico que no puede faltar en tu día ✨",
+    "Para empezar el día con buen ritmo 🎶",
+    "Ideal para una tarde tranquila ☕",
+    "Subile el volumen a este discazo 🔊",
+    "Porque este disco nunca falla 🔥",
+    "Perfecto para escuchar de punta a punta 🌟",
+    "Un viaje musical que tenés que hacer 🚀",
+]
+
+@router.get("/api/recommend")
+async def recommend_album(request: Request, db: Session = Depends(get_db)):
+    username = get_current_user(request)
+
+    base = db.query(Album).filter(Album.deleted_at == None)
+    if username:
+        user_obj = _get_user_obj(username, db)
+        base = base.filter(Album.user_id == user_obj.id)
+    else:
+        admin = db.query(User).filter(User.is_admin == True).first()
+        if admin:
+            base = base.filter(Album.user_id == admin.id)
+
+    ids = [r[0] for r in base.with_entities(Album.id).all()]
+    if not ids:
+        return JSONResponse({"error": "No hay discos"})
+
+    # Usar la fecha como seed para que sea el mismo disco todo el dia
+    today = date.today().isoformat()
+    seed = hashlib.md5((today + str(ids)).encode()).hexdigest()
+    rng = random.Random(seed)
+    picked_id = rng.choice(ids)
+
+    album = db.query(Album).filter(Album.id == picked_id).first()
+    reason = rng.choice(REASONS)
+
+    return JSONResponse({
+        "id": album.id,
+        "title": album.title,
+        "artist": album.artist,
+        "year": album.year,
+        "cover_url": album.cover_url,
+        "format_type": album.format_type,
+        "reason": reason,
+    })
