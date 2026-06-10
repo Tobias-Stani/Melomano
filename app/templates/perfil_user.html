@@ -180,6 +180,28 @@
     </section>
 
 
+    <!-- Último escuchado -->
+    {% if profile.last_listened %}
+    <section class="mt-10 pt-8 border-t border-cream-200">
+        <p class="text-xs uppercase tracking-widest text-ink-400 mb-4">Escuchando ahora</p>
+        <a href="/album/{{ profile.last_listened.id }}" class="flex items-center gap-4 bg-gradient-to-r from-emerald-50 to-cream-100 border border-emerald-200 rounded-2xl p-4 hover:shadow-md transition-all group">
+            <div class="w-16 h-16 rounded-xl overflow-hidden bg-cream-200 flex-shrink-0 shadow-sm">
+                {% if profile.last_listened.cover_url %}
+                <img src="{{ profile.last_listened.cover_url }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                {% else %}
+                <div class="w-full h-full flex items-center justify-center text-2xl">🎵</div>
+                {% endif %}
+            </div>
+            <div class="min-w-0 flex-1">
+                <p class="text-xs uppercase tracking-widest text-emerald-600 mb-0.5">🎧 Último escuchado</p>
+                <p class="font-serif font-700 text-ink-800 truncate">{{ profile.last_listened.title }}</p>
+                <p class="text-sm text-ink-500 truncate">{{ profile.last_listened.artist }}</p>
+                {% if profile.last_listened.year %}<p class="text-xs text-ink-400">{{ profile.last_listened.year }}</p>{% endif %}
+            </div>
+        </a>
+    </section>
+    {% endif %}
+
     <!-- Recientes -->
     {% if last_album or last_concert or last_visit %}
     <section class="mt-12 pt-10 border-t border-cream-200">

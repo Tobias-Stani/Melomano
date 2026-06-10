@@ -552,3 +552,28 @@ async def recommend_album(request: Request, db: Session = Depends(get_db)):
         "format_type": album.format_type,
         "reason": reason,
     })
+
+
+@router.post("/last-listened/{album_id}")
+async def set_last_listened(album_id: int, request: Request, db: Session = Depends(get_db)):
+    username = get_current_user(request)
+    if not username:
+        return JSONResponse({"error": "no autorizado"}, status_code=401)
+    user_obj = _get_user_obj(username, db)
+    album = db.query(Album).filter(Album.id == album_id, Album.deleted_at == None).first()
+    if not album:
+        return JSONResponse({"error": "no encontrado"}, status_code=404)
+    user_obj.last_listened_id = album_id
+    db.commit()
+    return JSONResponse({"ok": True, "title": album.title, "artist": album.artist, "cover_url": album.cover_url, "id": album.id})
+
+
+@router.delete("/last-listened")
+async def clear_last_listened(request: Request, db: Session = Depends(get_db)):
+    username = get_current_user(request)
+    if not username:
+        return JSONResponse({"error": "no autorizado"}, status_code=401)
+    user_obj = _get_user_obj(username, db)
+    user_obj.last_listened_id = None
+    db.commit()
+    return JSONResponse({"ok": True})

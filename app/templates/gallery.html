@@ -60,6 +60,32 @@
     </div>
 </div>
 
+<!-- Último escuchado -->
+{% if user_obj and user_obj.last_listened %}
+<a href="/album/{{ user_obj.last_listened.id }}" class="flex items-center gap-4 bg-gradient-to-r from-emerald-50 to-cream-100 border border-emerald-200 rounded-2xl p-4 mb-4 hover:shadow-md transition-all group">
+    <div class="w-14 h-14 rounded-xl overflow-hidden bg-cream-200 flex-shrink-0 shadow-sm">
+        {% if user_obj.last_listened.cover_url %}
+        <img src="{{ user_obj.last_listened.cover_url }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+        {% else %}
+        <div class="w-full h-full flex items-center justify-center text-2xl">🎵</div>
+        {% endif %}
+    </div>
+    <div class="min-w-0 flex-1">
+        <p class="text-xs uppercase tracking-widest text-emerald-600 mb-0.5">🎧 Último escuchado</p>
+        <p class="text-sm font-600 text-ink-800 truncate">{{ user_obj.last_listened.title }}</p>
+        <p class="text-xs text-ink-500 truncate">{{ user_obj.last_listened.artist }}</p>
+    </div>
+    <button onclick="event.preventDefault(); clearLastListened()"
+        class="text-ink-300 hover:text-red-400 text-xs transition-all flex-shrink-0 px-2">✕</button>
+</a>
+<script>
+async function clearLastListened() {
+    await fetch('/last-listened', { method: 'DELETE' });
+    location.reload();
+}
+</script>
+{% endif %}
+
 <!-- Recomendación del día -->
 <div id="recommendCard" class="mb-6 bg-gradient-to-r from-amber-50 to-pink-50 border border-amber-200 rounded-2xl p-4 hidden">
     <div class="flex items-center gap-4">

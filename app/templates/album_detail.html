@@ -124,12 +124,30 @@
                         ★ {% if is_featured %}En perfil{% else %}Agregar al perfil{% endif %}
                     </button>
                 </form>
+                <button id="lastListenedBtn" onclick="toggleLastListened()"
+                    class="flex items-center gap-1.5 text-sm px-3 py-1 rounded-full border transition-all border-cream-300 text-ink-400 hover:border-emerald-400 hover:text-emerald-600">
+                    🎧 Estoy escuchando
+                </button>
                 <a href="/album/{{ album.id }}/delete"
                     onclick="return confirm('Eliminar este album?')"
                     class="text-sm text-ink-300 hover:text-red-400 transition-all">
                     Eliminar
                 </a>
             </div>
+            {% endif %}
+
+            {% if user %}
+            <script>
+            async function toggleLastListened() {
+                const btn = document.getElementById('lastListenedBtn');
+                const resp = await fetch('/last-listened/{{ album.id }}', { method: 'POST' });
+                if (resp.ok) {
+                    btn.textContent = '🎧 ¡Guardado!';
+                    btn.className = btn.className.replace('border-cream-300 text-ink-400 hover:border-emerald-400 hover:text-emerald-600', 'border-emerald-400 text-emerald-600 bg-emerald-50');
+                    setTimeout(() => location.reload(), 800);
+                }
+            }
+            </script>
             {% endif %}
         </div>
     </div>
