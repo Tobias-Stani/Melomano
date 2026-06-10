@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, Date, DateTime, Boolean, Float, ForeignKey, UniqueConstraint
+
 from sqlalchemy.sql import func
 from app.database import Base
 
@@ -26,6 +27,9 @@ class Album(Base):
     # Origen
     discogs_id      = Column(Integer, nullable=True, index=True)
     discogs_url     = Column(Text, nullable=True)
+
+    # Batea fisica donde esta guardado
+    crate_id        = Column(Integer, ForeignKey("crates.id"), nullable=True, index=True)
 
     # Estado en la coleccion
     owned           = Column(Boolean, default=False)

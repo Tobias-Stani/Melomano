@@ -1,0 +1,453 @@
+{% extends "base.html" %}
+{% block title %}Bateas — Melomano{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto" id="bateaRoot">
+
+    <!-- ── Encabezado ── -->
+    <div class="flex items-start justify-between mb-8 gap-4 flex-wrap">
+        <div>
+            <h1 class="font-serif text-3xl font-700 text-ink-800 tracking-tight">Mis Bateas</h1>
+            <p class="text-ink-400 text-sm mt-1">{{ crates|length }} batea{% if crates|length != 1 %}s{% endif %} · {{ unassigned_total }} disco{% if unassigned_total != 1 %}s{% endif %} sin ubicar</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <!-- Toggle vista -->
+            <div class="flex bg-cream-200 rounded-xl p-1 gap-1">
+                <button id="btnCompact" onclick="setView('compact')"
+                    class="view-btn px-3 py-1.5 rounded-lg text-xs font-500 transition-all"
+                    title="Vista compacta">
+                    ⊞ Chips
+                </button>
+                <button id="btnGrid" onclick="setView('grid')"
+                    class="view-btn px-3 py-1.5 rounded-lg text-xs font-500 transition-all"
+                    title="Vista grilla">
+                    ▦ Grilla
+                </button>
+            </div>
+            {% if is_owner %}
+            <button onclick="document.getElementById('newCrateModal').classList.remove('hidden')"
+                class="px-4 py-2 rounded-xl text-sm font-500 bg-ink-800 text-cream-50 hover:bg-ink-700 transition-all">
+                + Nueva batea
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ── Grid de bateas ── -->
+    {% if crates %}
+    <div id="cratesGrid" class="grid grid-cols-3 gap-5 mb-10" style="align-items:start;">
+        {% for crate in crates %}
+        <div data-crate-id="{{ crate.id }}"
+            class="crate-card bg-cream-50 border-2 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all relative"
+            style="border-color:{{ crate.color or '#e4ceac' }}; grid-column: span {{ crate.col_span or 1 }};">
+
+            <!-- Header -->
+            <div class="flex items-center justify-between px-4 py-3 border-b border-cream-200"
+                style="background: {{ crate.color or '#e4ceac' }}22;">
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full flex-shrink-0" style="background: {{ crate.color or '#c49268' }};"></div>
+                    <span class="font-serif font-600 text-ink-800 text-sm">{{ crate.name }}</span>
+                    <span class="text-xs text-ink-400">({{ crate_albums[crate.id]|length }})</span>
+                </div>
+                {% if is_owner %}
+                <div class="flex items-center gap-2">
+                    <button onclick="startRename({{ crate.id }}, '{{ crate.name|replace("'", "\\'") }}')"
+                        class="text-ink-300 hover:text-ink-600 text-xs transition-all px-1">✎</button>
+                    <a href="/bateas/{{ crate.id }}/delete"
+                        onclick="return confirm('Eliminar batea «{{ crate.name }}»? Los discos quedarán sin ubicar.')"
+                        class="text-ink-300 hover:text-red-400 text-xs transition-all px-1">✕</a>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Drop zone -->
+            <div id="crate-drop-{{ crate.id }}"
+                data-crate="{{ crate.id }}"
+                class="crate-drop-zone zone-inner p-2.5 overflow-y-auto content-start"
+                style="height: {{ crate.height or 160 }}px;">
+                {% for album in crate_albums[crate.id] %}
+                <div data-album-id="{{ album.id }}"
+                    data-artist="{{ album.artist }}" data-title="{{ album.title }}"
+                    class="album-chip cursor-grab active:cursor-grabbing flex-shrink-0">
+                    <div class="w-12 h-12 rounded-lg overflow-hidden bg-cream-200 shadow-sm border border-cream-200 hover:border-amber-300 transition-all"
+                        title="{{ album.artist }} — {{ album.title }}">
+                        {% if album.cover_url %}
+                        <img src="{{ album.cover_url }}" alt="{{ album.title }}" class="w-full h-full object-cover" loading="lazy" />
+                        {% else %}
+                        <div class="w-full h-full flex items-center justify-center text-xl">🎵</div>
+                        {% endif %}
+                    </div>
+                    <div class="chip-info hidden mt-1 w-full">
+                        <p class="text-xs font-500 text-ink-700 truncate leading-tight">{{ album.title }}</p>
+                        <p class="text-xs text-ink-400 truncate">{{ album.artist }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+                {% if not crate_albums[crate.id] %}
+                <p class="crate-placeholder text-xs text-ink-300 italic w-full text-center py-6">Arrastrá discos aquí</p>
+                {% endif %}
+            </div>
+            {% if is_owner %}
+            <!-- Handle altura (abajo) -->
+            <div class="resize-h-handle flex items-center justify-center py-1 cursor-ns-resize select-none border-t border-cream-200 hover:bg-cream-100 transition-all"
+                data-crate-id="{{ crate.id }}"
+                title="Arrastrá para cambiar la altura">
+                <div class="w-8 h-1 rounded-full bg-cream-300"></div>
+            </div>
+            <!-- Handle ancho (derecha) -->
+            <div class="resize-w-handle absolute top-0 right-0 h-full w-2 cursor-ew-resize select-none flex items-center justify-center z-10"
+                data-crate-id="{{ crate.id }}" data-col-span="{{ crate.col_span or 1 }}"
+                title="Arrastrá para cambiar el ancho">
+                <div class="w-0.5 h-8 rounded-full bg-cream-300 opacity-0 group-hover:opacity-100 transition-all"></div>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-16 mb-10">
+        <div class="text-6xl mb-4">📦</div>
+        <p class="font-serif text-lg text-ink-500">Todavía no tenés bateas.</p>
+        <p class="text-sm text-ink-300 mt-2">Creá una para empezar a organizar tu colección física.</p>
+    </div>
+    {% endif %}
+
+    <!-- ── Sin ubicar (solo visible para el dueño) ── -->
+    {% if unassigned_by_format and is_owner %}
+    <div class="border-t border-cream-200 pt-8">
+        <div class="flex items-center gap-3 mb-6">
+            <p class="text-xs uppercase tracking-widest text-ink-400">Sin ubicar</p>
+            <span class="text-xs bg-cream-200 text-ink-500 px-2 py-0.5 rounded-full">{{ unassigned_total }}</span>
+        </div>
+
+        <!-- VISTA CHIPS: agrupada por formato -->
+        <div id="unassignedChips" class="space-y-5">
+        {% for fmt, albums in unassigned_by_format.items() %}
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="text-xs font-600 uppercase tracking-widest text-ink-500">
+                    {% if fmt == 'Vinyl' %}🖤 Vinyl
+                    {% elif fmt == 'CD' %}💿 CD
+                    {% elif fmt == 'Cassette' %}📼 Cassette
+                    {% elif fmt == 'Digital' %}☁️ Digital
+                    {% elif fmt == 'SACD' %}💎 SACD
+                    {% elif fmt == 'Blu-ray Audio' %}📀 Blu-ray Audio
+                    {% else %}🎵 {{ fmt }}{% endif %}
+                </span>
+                <span class="text-xs text-ink-300">{{ albums|length }}</span>
+                <div class="flex-1 h-px bg-cream-200"></div>
+            </div>
+            <div data-crate="null" data-format="{{ fmt }}"
+                class="crate-drop-zone chip-zone h-[120px] overflow-y-auto flex flex-wrap gap-1.5 p-2.5 bg-cream-100 border border-dashed border-cream-300 rounded-xl content-start">
+                {% for album in albums %}
+                <div data-album-id="{{ album.id }}" data-format="{{ album.format_type or '' }}"
+                    class="album-chip-small cursor-grab active:cursor-grabbing flex-shrink-0">
+                    <div class="w-9 h-9 rounded-md overflow-hidden bg-cream-200 shadow-sm border border-cream-200 hover:border-amber-300 transition-all"
+                        title="{{ album.artist }} — {{ album.title }}">
+                        {% if album.cover_url %}
+                        <img src="{{ album.cover_url }}" alt="{{ album.title }}" class="w-full h-full object-cover" loading="lazy" />
+                        {% else %}
+                        <div class="w-full h-full flex items-center justify-center text-sm">🎵</div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+        </div>
+
+        <!-- VISTA TABLA: todas las filas en una sola lista draggable -->
+        <div id="unassignedTable" class="hidden">
+            <!-- Encabezado -->
+            <div class="grid table-cols gap-3 px-3 py-2 text-xs uppercase tracking-widest text-ink-400 border-b border-cream-200 mb-1">
+                <span>Portada</span>
+                <span>Artista</span>
+                <span>Disco</span>
+                <span>Formato</span>
+            </div>
+            <!-- Filas draggables -->
+            <div id="tableDropZone" data-crate="null"
+                class="crate-drop-zone divide-y divide-cream-200">
+                {% for fmt, albums in unassigned_by_format.items() %}
+                {% for album in albums %}
+                <div data-album-id="{{ album.id }}" data-format="{{ album.format_type or '' }}"
+                    class="album-chip-table grid table-cols gap-3 items-center px-3 py-2 hover:bg-cream-100 cursor-grab active:cursor-grabbing transition-all">
+                    <!-- Portada -->
+                    <div class="w-10 h-10 rounded-md overflow-hidden bg-cream-200 shadow-sm flex-shrink-0">
+                        {% if album.cover_url %}
+                        <img src="{{ album.cover_url }}" alt="{{ album.title }}" class="w-full h-full object-cover" loading="lazy" />
+                        {% else %}
+                        <div class="w-full h-full flex items-center justify-center">🎵</div>
+                        {% endif %}
+                    </div>
+                    <!-- Artista -->
+                    <span class="text-sm text-ink-700 truncate">{{ album.artist }}</span>
+                    <!-- Título -->
+                    <span class="text-sm font-500 text-ink-800 truncate">{{ album.title }}</span>
+                    <!-- Formato -->
+                    <span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full w-fit
+                        {% if album.format_type == 'Vinyl' %}bg-ink-800 text-cream-50
+                        {% elif album.format_type == 'CD' %}bg-blue-100 text-blue-700
+                        {% elif album.format_type == 'Cassette' %}bg-amber-100 text-amber-700
+                        {% elif album.format_type == 'Digital' %}bg-emerald-100 text-emerald-700
+                        {% else %}bg-cream-200 text-ink-500{% endif %}">
+                        {% if album.format_type == 'Vinyl' %}🖤
+                        {% elif album.format_type == 'CD' %}💿
+                        {% elif album.format_type == 'Cassette' %}📼
+                        {% elif album.format_type == 'Digital' %}☁️
+                        {% endif %}
+                        {{ album.format_type or '—' }}
+                    </span>
+                </div>
+                {% endfor %}
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+    {% endif %}
+
+</div><!-- /bateaRoot -->
+
+<!-- ── Modal nueva batea ── -->
+<div id="newCrateModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+    <div class="bg-cream-50 rounded-2xl p-6 w-full max-w-sm shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="font-serif text-lg font-600 text-ink-800">Nueva batea</h2>
+            <button onclick="document.getElementById('newCrateModal').classList.add('hidden')"
+                class="text-ink-300 hover:text-ink-600 text-xl leading-none">&times;</button>
+        </div>
+        <form action="/bateas" method="POST" class="space-y-4">
+            <div>
+                <label class="block text-xs uppercase tracking-widest text-ink-400 mb-2">Nombre</label>
+                <input type="text" name="name" required placeholder="Ej: Estante izquierdo, Bajo la cama..."
+                    class="w-full bg-white border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+            </div>
+            <div>
+                <label class="block text-xs uppercase tracking-widest text-ink-400 mb-2">Color</label>
+                <div class="flex gap-2 flex-wrap">
+                    {% for color in accent_colors %}
+                    <label class="cursor-pointer">
+                        <input type="radio" name="color" value="{{ color }}" class="hidden peer" {% if loop.first %}checked{% endif %} />
+                        <div class="w-6 h-6 rounded-full border-2 border-transparent peer-checked:border-ink-800 peer-checked:scale-110 transition-all"
+                            style="background:{{ color }};"></div>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            <button type="submit"
+                class="w-full py-2.5 bg-ink-800 text-cream-50 rounded-xl text-sm font-600 hover:bg-ink-700 transition-all">
+                Crear batea
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- ── Modal renombrar ── -->
+<div id="renameModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+    <div class="bg-cream-50 rounded-2xl p-6 w-full max-w-sm shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="font-serif text-lg font-600 text-ink-800">Renombrar batea</h2>
+            <button onclick="document.getElementById('renameModal').classList.add('hidden')"
+                class="text-ink-300 hover:text-ink-600 text-xl leading-none">&times;</button>
+        </div>
+        <form id="renameForm" action="" method="POST" class="space-y-4">
+            <input type="text" id="renameInput" name="name" required
+                class="w-full bg-white border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+            <button type="submit"
+                class="w-full py-2.5 bg-ink-800 text-cream-50 rounded-xl text-sm font-600 hover:bg-ink-700 transition-all">
+                Guardar
+            </button>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<style>
+/* Columnas tabla */
+.table-cols { grid-template-columns: 40px 1fr 1.4fr auto; }
+
+/* ── Crates: chips con altura fija siempre ── */
+.zone-inner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    height: 160px;
+    overflow-y: auto;
+}
+
+/* Botón activo */
+.view-btn { color: #7a6a5a; }
+.view-btn.active { background: white; color: #1a1a1a; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+</style>
+<script>
+// ── Vista compact / grid ───────────────────────────────────
+const root = document.getElementById('bateaRoot');
+
+function setView(v) {
+    localStorage.setItem('bateaView', v);
+    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(v === 'compact' ? 'btnCompact' : 'btnGrid').classList.add('active');
+
+    const chips = document.getElementById('unassignedChips');
+    const table = document.getElementById('unassignedTable');
+    if (!chips || !table) return;
+
+    if (v === 'grid') {
+        chips.classList.add('hidden');
+        table.classList.remove('hidden');
+        // Inicializar sortable en la tabla si no está
+        if (!table._sortable) {
+            const zone = document.getElementById('tableDropZone');
+            if (zone) table._sortable = initSortable(zone);
+        }
+    } else {
+        chips.classList.remove('hidden');
+        table.classList.add('hidden');
+    }
+}
+
+// Cargar preferencia guardada
+setView(localStorage.getItem('bateaView') || 'compact');
+
+// ── Renombrar ──────────────────────────────────────────────
+function startRename(crateId, currentName) {
+    document.getElementById('renameForm').action = `/bateas/${crateId}/rename`;
+    document.getElementById('renameInput').value  = currentName;
+    document.getElementById('renameModal').classList.remove('hidden');
+    document.getElementById('renameInput').focus();
+}
+
+// ── Drag & drop ────────────────────────────────────────────
+function initSortable(el) {
+    return Sortable.create(el, {
+        group:             'albums',
+        animation:         150,
+        ghostClass:        'opacity-40',
+        scroll:            true,
+        scrollSensitivity: 60,
+        scrollSpeed:       14,
+        bubbleScroll:      true,
+        onEnd(evt) {
+            const albumId = parseInt(evt.item.dataset.albumId);
+            const crateId = evt.to.dataset.crate === 'null' ? null : parseInt(evt.to.dataset.crate);
+            fetch('/bateas/assign', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body:    `album_id=${albumId}${crateId !== null ? `&crate_id=${crateId}` : ''}`,
+            });
+            // Si viene de la tabla y fue a una batea, quitar de la tabla de chips también
+            if (crateId !== null) {
+                document.querySelectorAll(`.album-chip-small[data-album-id="${albumId}"]`).forEach(el => el.remove());
+            }
+            // Placeholder en bateas
+            [evt.from, evt.to].forEach(zone => {
+                const items = zone.querySelectorAll('.album-chip, .album-chip-small, .album-chip-table');
+                let ph = zone.querySelector('.crate-placeholder');
+                if (items.length === 0) {
+                    if (!ph) {
+                        ph = document.createElement('p');
+                        ph.className = 'crate-placeholder text-xs text-ink-300 italic w-full text-center py-6 col-span-full';
+                        ph.textContent = 'Arrastrá discos aquí';
+                        zone.appendChild(ph);
+                    }
+                } else if (ph) ph.remove();
+            });
+        },
+    });
+}
+
+const IS_OWNER = {{ 'true' if is_owner else 'false' }};
+if (IS_OWNER) document.querySelectorAll('.crate-drop-zone').forEach(initSortable);
+
+// ── Reordenar bateas ───────────────────────────────────────
+const grid = document.getElementById('cratesGrid');
+if (grid) {
+    Sortable.create(grid, {
+        animation:  200,
+        handle:     '.crate-card',
+        filter:     '.crate-drop-zone, button, a, input',
+        preventOnFilter: false,
+        ghostClass: 'opacity-40',
+        onEnd() {
+            const order = [...grid.querySelectorAll('[data-crate-id]')]
+                .map(el => parseInt(el.dataset.crateId));
+            fetch('/bateas/reorder', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ order }),
+            });
+        },
+    });
+}
+
+// ── Resize de bateas ──────────────────────────────────────
+function saveSize(crateId, payload) {
+    fetch(`/bateas/${crateId}/size`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload),
+    });
+}
+
+// Handle altura (arrastre vertical)
+document.querySelectorAll('.resize-h-handle').forEach(handle => {
+    handle.addEventListener('mousedown', e => {
+        e.preventDefault();
+        const crateId  = handle.dataset.crateId;
+        const dropZone = document.getElementById('crate-drop-' + crateId);
+        const startY   = e.clientY;
+        const startH   = dropZone.offsetHeight;
+        function onMove(e) {
+            dropZone.style.height = Math.max(80, Math.min(startH + e.clientY - startY, 800)) + 'px';
+        }
+        function onUp() {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            saveSize(crateId, { height: dropZone.offsetHeight });
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+});
+
+// Handle ancho (arrastre horizontal → snap a 1, 2 o 3 cols)
+document.querySelectorAll('.resize-w-handle').forEach(handle => {
+    handle.addEventListener('mousedown', e => {
+        e.preventDefault();
+        const crateId   = handle.dataset.crateId;
+        const card      = handle.closest('.crate-card');
+        const startX    = e.clientX;
+        const startSpan = parseInt(handle.dataset.colSpan) || 1;
+        // Ancho aproximado de 1 columna del grid
+        const colW = document.getElementById('cratesGrid').offsetWidth / 3;
+
+        function onMove(e) {
+            const dx      = e.clientX - startX;
+            const newSpan = Math.max(1, Math.min(3, Math.round(startSpan + dx / colW)));
+            card.style.gridColumn = `span ${newSpan}`;
+        }
+        function onUp() {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            const finalSpan = parseInt(card.style.gridColumn.replace('span ', '')) || startSpan;
+            handle.dataset.colSpan = finalSpan;
+            saveSize(crateId, { col_span: finalSpan });
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+});
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        document.getElementById('newCrateModal').classList.add('hidden');
+        document.getElementById('renameModal').classList.add('hidden');
+    }
+});
+</script>
+{% endblock %}
