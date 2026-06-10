@@ -25,3 +25,10 @@ Thumbs.db
 docker-compose.yml
 Dockerfile
 docker-compose.override.yml
+
+# Backups de BD
+backup_*.sql
+*.dump
+
+# Skills
+.agents/
