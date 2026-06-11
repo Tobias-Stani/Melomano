@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}{{ crate.name }} — Bateas{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+
+    <!-- ── Encabezado ── -->
+    <div class="flex items-start justify-between mb-8 gap-4 flex-wrap">
+        <div class="flex items-center gap-3">
+            <a href="/bateas" class="text-ink-400 hover:text-ink-700 transition-all text-sm">← Bateas</a>
+            <div class="w-4 h-4 rounded-full flex-shrink-0" style="background:{{ crate.color or '#c49268' }};"></div>
+            <h1 class="font-serif text-3xl font-700 text-ink-800 tracking-tight">{{ crate.name }}</h1>
+            <span class="text-ink-400 text-sm">{{ albums|length }} disco{% if albums|length != 1 %}s{% endif %}</span>
+        </div>
+        {% if is_owner %}
+        <div class="flex items-center gap-2">
+            <button onclick="document.getElementById('renameModal').classList.remove('hidden')"
+                class="px-3 py-1.5 rounded-xl text-xs font-500 border border-cream-300 text-ink-600 hover:bg-cream-200 transition-all">
+                ✎ Renombrar
+            </button>
+            <a href="/bateas/{{ crate.id }}/delete"
+                onclick="return confirm('Eliminar «{{ crate.name }}»? Los discos quedarán sin ubicar.')"
+                class="px-3 py-1.5 rounded-xl text-xs font-500 border border-red-200 text-red-400 hover:bg-red-50 transition-all">
+                Eliminar
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ── Discos en esta batea ── -->
+    {% if albums %}
+    <div id="crateAlbums" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 mb-12">
+        {% for album in albums %}
+        <div class="group relative">
+            <a href="/album/{{ album.id }}" class="block">
+                <div class="aspect-square rounded-xl overflow-hidden bg-cream-200 shadow-sm border-2 border-transparent group-hover:border-amber-300 transition-all"
+                    style="border-color: {{ crate.color or 'transparent' }}22;">
+                    {% if album.cover_url %}
+                    <img src="{{ album.cover_url }}" alt="{{ album.title }}" class="w-full h-full object-cover" loading="lazy" />
+                    {% else %}
+                    <div class="w-full h-full flex items-center justify-center text-4xl">🎵</div>
+                    {% endif %}
+                </div>
+                <p class="mt-2 text-xs font-500 text-ink-700 truncate leading-tight">{{ album.title }}</p>
+                <p class="text-xs text-ink-400 truncate">{{ album.artist }}</p>
+                {% if album.format_type %}
+                <span class="text-xs text-ink-300">{{ album.format_type }}</span>
+                {% endif %}
+            </a>
+            {% if is_owner %}
+            <button onclick="removeFromCrate({{ album.id }}, this)"
+                class="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/50 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500"
+                title="Quitar de la batea">✕</button>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-16 mb-12">
+        <div class="text-5xl mb-3">📭</div>
+        <p class="font-serif text-lg text-ink-500">Esta batea está vacía.</p>
+        {% if is_owner %}<p class="text-sm text-ink-300 mt-1">Agregá discos desde la sección de abajo.</p>{% endif %}
+    </div>
+    {% endif %}
+
+    <!-- ── Agregar discos (solo dueño) ── -->
+    {% if is_owner and unassigned %}
+    <div class="border-t border-cream-200 pt-8">
+        <div class="flex items-center gap-3 mb-5">
+            <p class="text-xs uppercase tracking-widest text-ink-400">Agregar a esta batea</p>
+            <span class="text-xs bg-cream-200 text-ink-500 px-2 py-0.5 rounded-full">{{ unassigned|length }} disponibles</span>
+        </div>
+
+        <!-- Búsqueda rápida -->
+        <input id="searchUnassigned" type="text" placeholder="Buscar disco..."
+            class="w-full max-w-sm bg-white border border-cream-200 rounded-xl px-4 py-2 text-sm text-ink-800 mb-4 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+
+        <div id="unassignedGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+            {% for album in unassigned %}
+            <div class="unassigned-item group cursor-pointer" data-title="{{ album.title|lower }}" data-artist="{{ album.artist|lower }}"
+                onclick="addToCrate({{ album.id }}, this)">
+                <div class="aspect-square rounded-lg overflow-hidden bg-cream-200 border-2 border-transparent group-hover:border-amber-400 transition-all shadow-sm">
+                    {% if album.cover_url %}
+                    <img src="{{ album.cover_url }}" alt="{{ album.title }}" class="w-full h-full object-cover" loading="lazy" />
+                    {% else %}
+                    <div class="w-full h-full flex items-center justify-center text-2xl">🎵</div>
+                    {% endif %}
+                </div>
+                <p class="mt-1 text-xs text-ink-600 truncate leading-tight">{{ album.title }}</p>
+                <p class="text-xs text-ink-400 truncate">{{ album.artist }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<!-- ── Modal renombrar ── -->
+{% if is_owner %}
+<div id="renameModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+    <div class="bg-cream-50 rounded-2xl p-6 w-full max-w-sm shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="font-serif text-lg font-600 text-ink-800">Renombrar batea</h2>
+            <button onclick="document.getElementById('renameModal').classList.add('hidden')"
+                class="text-ink-300 hover:text-ink-600 text-xl leading-none">&times;</button>
+        </div>
+        <form action="/bateas/{{ crate.id }}/rename" method="POST" class="space-y-4">
+            <input type="text" name="name" value="{{ crate.name }}" required
+                class="w-full bg-white border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+            <button type="submit"
+                class="w-full py-2.5 bg-ink-800 text-cream-50 rounded-xl text-sm font-600 hover:bg-ink-700 transition-all">
+                Guardar
+            </button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const CRATE_ID = {{ crate.id }};
+
+// Quitar disco de la batea
+function removeFromCrate(albumId, btn) {
+    const card = btn.closest('.group');
+    fetch('/bateas/assign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `album_id=${albumId}`,
+    }).then(() => card.remove());
+}
+
+// Agregar disco a la batea
+function addToCrate(albumId, card) {
+    fetch('/bateas/assign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `album_id=${albumId}&crate_id=${CRATE_ID}`,
+    }).then(r => r.json()).then(() => {
+        card.remove();
+        // Recargar la sección de discos para mostrar el nuevo
+        location.reload();
+    });
+}
+
+// Búsqueda rápida en sin ubicar
+document.getElementById('searchUnassigned')?.addEventListener('input', function() {
+    const q = this.value.toLowerCase().trim();
+    document.querySelectorAll('.unassigned-item').forEach(el => {
+        const match = !q || el.dataset.title.includes(q) || el.dataset.artist.includes(q);
+        el.style.display = match ? '' : 'none';
+    });
+});
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.getElementById('renameModal')?.classList.add('hidden');
+});
+</script>
+{% endblock %}
