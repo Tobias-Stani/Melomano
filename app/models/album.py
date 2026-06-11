@@ -30,6 +30,7 @@ class Album(Base):
 
     # Batea fisica donde esta guardado
     crate_id        = Column(Integer, ForeignKey("crates.id"), nullable=True, index=True)
+    crate_position  = Column(Integer, nullable=True, default=0)
 
     # Estado en la coleccion
     owned           = Column(Boolean, default=False)

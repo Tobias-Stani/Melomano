@@ -130,7 +130,7 @@ async def crate_detail(crate_id: int, request: Request, db: Session = Depends(ge
     albums = (
         db.query(Album)
         .filter(Album.crate_id == crate_id, Album.deleted_at == None)
-        .order_by(Album.artist)
+        .order_by(Album.crate_position.asc().nullslast(), Album.artist)
         .all()
     )
 
@@ -236,6 +236,23 @@ async def reorder_crates(request: Request, db: Session = Depends(get_db)):
     data = await request.json()
     for i, cid in enumerate(data.get("order", [])):
         db.query(Crate).filter(Crate.id == cid, Crate.user_id == user.id).update({"position": i})
+    db.commit()
+    return JSONResponse({"ok": True})
+
+
+# ── Reordenar álbumes dentro de una batea ─────────────────
+@router.post("/{crate_id}/reorder-albums")
+async def reorder_albums(crate_id: int, request: Request, db: Session = Depends(get_db)):
+    username, user = _require_user(request, db)
+    if not user:
+        return JSONResponse({"error": "no autorizado"}, status_code=401)
+    data = await request.json()
+    for i, album_id in enumerate(data.get("order", [])):
+        db.query(Album).filter(
+            Album.id == album_id,
+            Album.crate_id == crate_id,
+            Album.user_id == user.id,
+        ).update({"crate_position": i})
     db.commit()
     return JSONResponse({"ok": True})
 

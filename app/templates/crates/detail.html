@@ -29,10 +29,11 @@
 
     <!-- ── Discos en esta batea ── -->
     {% if albums %}
+    {% if is_owner %}<p class="text-xs text-ink-300 mb-3">Arrastrá para reordenar</p>{% endif %}
     <div id="crateAlbums" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 mb-12">
         {% for album in albums %}
-        <div class="group relative">
-            <a href="/album/{{ album.id }}" class="block">
+        <div class="group relative{% if is_owner %} cursor-grab active:cursor-grabbing{% endif %}" data-album-id="{{ album.id }}">
+            <a href="/album/{{ album.id }}" class="block drag-link">
                 <div class="aspect-square rounded-xl overflow-hidden bg-cream-200 shadow-sm border-2 border-transparent group-hover:border-amber-300 transition-all"
                     style="border-color: {{ crate.color or 'transparent' }}22;">
                     {% if album.cover_url %}
@@ -120,38 +121,61 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
 const CRATE_ID = {{ crate.id }};
+const IS_OWNER = {{ 'true' if is_owner else 'false' }};
 
-// Quitar disco de la batea
-function removeFromCrate(albumId, btn) {
-    const card = btn.closest('.group');
-    fetch('/bateas/assign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `album_id=${albumId}`,
-    }).then(() => card.remove());
-}
-
-// Agregar disco a la batea
-function addToCrate(albumId, card) {
-    fetch('/bateas/assign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `album_id=${albumId}&crate_id=${CRATE_ID}`,
-    }).then(r => r.json()).then(() => {
-        card.remove();
-        // Recargar la sección de discos para mostrar el nuevo
-        location.reload();
+// ── Drag & drop para reordenar ─────────────────────────────
+const grid = document.getElementById('crateAlbums');
+if (grid && IS_OWNER) {
+    Sortable.create(grid, {
+        animation:   180,
+        ghostClass:  'opacity-30',
+        scroll:      true,
+        // Prevenir que el click en el link dispare navegación al arrastrar
+        onStart() {
+            grid.querySelectorAll('.drag-link').forEach(a => a.style.pointerEvents = 'none');
+        },
+        onEnd(evt) {
+            grid.querySelectorAll('.drag-link').forEach(a => a.style.pointerEvents = '');
+            // Si no hubo movimiento real, no guardar
+            if (evt.oldIndex === evt.newIndex) return;
+            const order = [...grid.querySelectorAll('[data-album-id]')]
+                .map(el => parseInt(el.dataset.albumId));
+            fetch(`/bateas/${CRATE_ID}/reorder-albums`, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ order }),
+            });
+        },
     });
 }
 
-// Búsqueda rápida en sin ubicar
+// ── Quitar disco de la batea ───────────────────────────────
+function removeFromCrate(albumId, btn) {
+    const card = btn.closest('[data-album-id]');
+    fetch('/bateas/assign', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body:    `album_id=${albumId}`,
+    }).then(() => card.remove());
+}
+
+// ── Agregar disco a la batea ───────────────────────────────
+function addToCrate(albumId, card) {
+    fetch('/bateas/assign', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body:    `album_id=${albumId}&crate_id=${CRATE_ID}`,
+    }).then(() => location.reload());
+}
+
+// ── Búsqueda en sin ubicar ─────────────────────────────────
 document.getElementById('searchUnassigned')?.addEventListener('input', function() {
     const q = this.value.toLowerCase().trim();
     document.querySelectorAll('.unassigned-item').forEach(el => {
-        const match = !q || el.dataset.title.includes(q) || el.dataset.artist.includes(q);
-        el.style.display = match ? '' : 'none';
+        el.style.display = (!q || el.dataset.title.includes(q) || el.dataset.artist.includes(q)) ? '' : 'none';
     });
 });
 
