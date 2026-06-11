@@ -13,7 +13,10 @@
       "Bash(docker-compose restart *)",
       "Bash(npx skills *)",
       "Bash(winget --version)",
-      "Bash(winget install *)"
+      "Bash(winget install *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/bateas)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/)",
+      "Bash(docker run *)"
     ]
   }
 }

@@ -17,6 +17,7 @@ from app.auth import get_current_user
 from app.services.discogs import sync_collection, search_discogs, fetch_release_details, search_by_barcode
 from app.models.favorite_track import FavoriteTrack
 from app.models.user import User
+from app.models.crate import Crate
 
 
 def _get_user_obj(username: str, db: Session):
@@ -147,10 +148,11 @@ async def album_detail(album_id: int, request: Request, db: Session = Depends(ge
         FavoriteTrack.album_id == album_id,
         FavoriteTrack.user_id == user_obj.id,
     ).first() if user_obj else None
+    crate = db.query(Crate).filter(Crate.id == album.crate_id).first() if album.crate_id else None
     return templates.TemplateResponse("album_detail.html", {
         "request": request, "user": user, "album": album,
         "is_featured": is_featured, "format_types": format_types,
-        "extra": discogs_extra, "fav_track": fav_track,
+        "extra": discogs_extra, "fav_track": fav_track, "crate": crate,
     })
 
 

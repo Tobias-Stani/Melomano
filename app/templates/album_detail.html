@@ -52,6 +52,7 @@
                 {% if album.owned %}<span class="text-xs bg-cream-200 text-ink-600 px-2.5 py-0.5 rounded-full">💿 Coleccion</span>{% endif %}
                 {% if album.wishlist %}<span class="text-xs bg-cream-200 text-ink-600 px-2.5 py-0.5 rounded-full">🔖 Wishlist</span>{% endif %}
                 {% if album.listened %}<span class="text-xs bg-cream-200 text-ink-600 px-2.5 py-0.5 rounded-full">✓ Escuchado</span>{% endif %}
+                {% if crate %}<a href="/bateas" class="text-xs px-2.5 py-0.5 rounded-full font-500 hover:opacity-80 transition-all" style="background:{{ crate.color }}22; color:{{ crate.color }}; border: 1px solid {{ crate.color }}55;">📦 {{ crate.name }}</a>{% endif %}
             </div>
 
             <h1 class="font-serif text-3xl font-700 text-ink-800 tracking-tight leading-tight mb-1">{{ album.title }}</h1>
