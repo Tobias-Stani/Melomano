@@ -15,7 +15,7 @@ templates = Jinja2Templates(directory="app/templates")
 async def login_page(request: Request, next: str = "/"):
     if get_current_user(request):
         return RedirectResponse(url="/", status_code=302)
-    return templates.TemplateResponse("login.html", {"request": request, "error": None, "next": next})
+    return templates.TemplateResponse("auth/login.html", {"request": request, "error": None, "next": next})
 
 
 @router.post("/login")
@@ -32,7 +32,7 @@ async def login_post(
         response = RedirectResponse(url=next or "/", status_code=303)
         response.set_cookie(key=COOKIE_NAME, value=token, max_age=COOKIE_MAX_AGE, httponly=True, samesite="lax")
         return response
-    return templates.TemplateResponse("login.html", {"request": request, "error": "Usuario o contrasena incorrectos", "next": next}, status_code=401)
+    return templates.TemplateResponse("auth/login.html", {"request": request, "error": "Usuario o contrasena incorrectos", "next": next}, status_code=401)
 
 
 @router.get("/logout")

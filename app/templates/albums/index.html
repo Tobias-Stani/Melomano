@@ -42,7 +42,7 @@
             class="px-4 py-2 rounded-xl text-sm font-500 bg-pink-600 hover:bg-pink-500 text-white transition-all shadow-sm">
             🎰 Tragamonedas
         </button> #}
-        {% if user %}
+        {% if is_own %}
         <a href="/bateas"
             class="px-4 py-2 rounded-xl text-sm font-500 border border-cream-300 text-ink-600 hover:bg-cream-200 transition-all">
             📦 Bateas
@@ -64,10 +64,12 @@
     </div>
 </div>
 
-<!-- Último escuchado -->
+<!-- Último escuchado + Recomendación: side by side en desktop -->
+<div class="flex flex-col md:flex-row gap-3 mb-6">
+
 {% if user_obj and user_obj.last_listened %}
-<a href="/album/{{ user_obj.last_listened.id }}" class="flex items-center gap-4 bg-gradient-to-r from-emerald-50 to-cream-100 border border-emerald-200 rounded-2xl p-4 mb-4 hover:shadow-md transition-all group">
-    <div class="w-14 h-14 rounded-xl overflow-hidden bg-cream-200 flex-shrink-0 shadow-sm">
+<a href="/album/{{ user_obj.last_listened.id }}" class="flex items-center gap-3 flex-1 bg-gradient-to-r from-emerald-50 to-cream-100 border border-emerald-200 rounded-2xl p-3 hover:shadow-md transition-all group min-w-0">
+    <div class="w-12 h-12 rounded-xl overflow-hidden bg-cream-200 flex-shrink-0 shadow-sm">
         {% if user_obj.last_listened.cover_url %}
         <img src="{{ user_obj.last_listened.cover_url }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
         {% else %}
@@ -79,8 +81,8 @@
         <p class="text-sm font-600 text-ink-800 truncate">{{ user_obj.last_listened.title }}</p>
         <p class="text-xs text-ink-500 truncate">{{ user_obj.last_listened.artist }}</p>
     </div>
-    <button onclick="event.preventDefault(); clearLastListened()"
-        class="text-ink-300 hover:text-red-400 text-xs transition-all flex-shrink-0 px-2">✕</button>
+    {% if is_own %}<button onclick="event.preventDefault(); clearLastListened()"
+        class="text-ink-300 hover:text-red-400 text-xs transition-all flex-shrink-0 px-2">✕</button>{% endif %}
 </a>
 <script>
 async function clearLastListened() {
@@ -91,21 +93,21 @@ async function clearLastListened() {
 {% endif %}
 
 <!-- Recomendación del día -->
-<div id="recommendCard" class="mb-6 bg-gradient-to-r from-amber-50 to-pink-50 border border-amber-200 rounded-2xl p-4 hidden">
-    <div class="flex items-center gap-4">
-        <div id="recommendCover" class="w-16 h-16 rounded-xl overflow-hidden bg-cream-200 shadow-sm flex-shrink-0 flex items-center justify-center text-3xl">
-            🎵
-        </div>
-        <div class="min-w-0 flex-1">
-            <p class="text-xs uppercase tracking-widest text-amber-600 mb-0.5">🌟 Recomendación del día</p>
-            <p id="recommendTitle" class="text-sm font-600 text-ink-800 truncate"></p>
-            <p id="recommendArtist" class="text-xs text-ink-500 truncate"></p>
-            <p id="recommendReason" class="text-xs text-ink-400 italic mt-0.5"></p>
-        </div>
-        <a id="recommendLink" href="#" class="shrink-0 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-white rounded-xl text-xs font-500 transition-all">
-            Ver disco →
-        </a>
+<div id="recommendCard" class="flex items-center gap-3 flex-1 bg-gradient-to-r from-amber-50 to-pink-50 border border-amber-200 rounded-2xl p-3 hidden min-w-0">
+    <div id="recommendCover" class="w-12 h-12 rounded-xl overflow-hidden bg-cream-200 shadow-sm flex-shrink-0 flex items-center justify-center text-2xl">
+        🎵
     </div>
+    <div class="min-w-0 flex-1">
+        <p class="text-xs uppercase tracking-widest text-amber-600 mb-0.5">🌟 Recomendación del día</p>
+        <p id="recommendTitle" class="text-sm font-600 text-ink-800 truncate"></p>
+        <p id="recommendArtist" class="text-xs text-ink-500 truncate"></p>
+        <p id="recommendReason" class="text-xs text-ink-400 italic mt-0.5 line-clamp-1"></p>
+    </div>
+    <a id="recommendLink" href="#" class="shrink-0 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-white rounded-xl text-xs font-500 transition-all">
+        Ver →
+    </a>
+</div>
+
 </div>
 
 <!-- Panel de estadísticas -->
@@ -276,16 +278,16 @@ async function clearLastListened() {
 <div class="text-center py-20">
     <div class="text-6xl mb-4">🎵</div>
     <p class="font-serif text-lg text-ink-500">Coleccion vacia.</p>
-    {% if user %}
+    {% if is_own %}
     <p class="text-sm text-ink-300 mt-2">Sincroniza tu Discogs o agrega un disco manualmente.</p>
-    {% else %}
+    {% elif not user %}
     <p class="text-sm text-ink-300 mt-2"><a href="/login" class="underline">Ingresa</a> para sincronizar tu coleccion.</p>
     {% endif %}
 </div>
 {% endif %}
 
 <!-- Modal agregar disco -->
-{% if user %}
+{% if is_own %}
 <div id="addModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
     <div class="bg-cream-50 rounded-2xl p-6 w-full max-w-lg shadow-xl">
         <div class="flex items-center justify-between mb-4">
@@ -1174,7 +1176,7 @@ function closeQuiz() {
 }
 // ═══ Fin Quiz ═══
 </script>
-{% if user %}
+{% if is_own %}
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 function switchTab(tab) {

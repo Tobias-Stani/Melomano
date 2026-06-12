@@ -24,7 +24,7 @@
     <a href="/bares" class="absolute top-4 left-4 inline-flex items-center gap-1.5 text-sm text-white/90 hover:text-white transition-all bg-black/25 hover:bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm">
         ← Volver a bares
     </a>
-    {% if user and active_photos %}
+    {% if is_owner and active_photos %}
     <button onclick="document.getElementById('bannerPicker').classList.toggle('hidden')"
         class="absolute bottom-12 right-4 inline-flex items-center gap-1.5 text-xs text-white/80 hover:text-white bg-black/30 hover:bg-black/50 px-3 py-1.5 rounded-full backdrop-blur-sm transition-all">
         🖼 Cambiar banner
@@ -32,14 +32,14 @@
     {% endif %}
     {% else %}
     <div class="w-full h-full bg-cream-200 flex flex-col items-center justify-center gap-3">
-        {% if user and active_photos %}
+        {% if is_owner and active_photos %}
         <span class="text-4xl opacity-25">🖼</span>
         <p class="text-ink-400 text-sm">Sin banner todavía</p>
         <button onclick="document.getElementById('bannerPicker').classList.toggle('hidden')"
             class="inline-flex items-center gap-2 bg-ink-800 text-cream-50 text-sm px-5 py-2 rounded-full hover:bg-ink-700 transition-all">
             Elegir banner
         </button>
-        {% elif user %}
+        {% elif is_owner %}
         <span class="text-4xl opacity-20">🖼</span>
         <p class="text-ink-400 text-sm">Agregá fotos para poder elegir un banner</p>
         {% endif %}
@@ -51,7 +51,7 @@
 </div>
 
 <!-- Selector de banner -->
-{% if user and active_photos %}
+{% if is_owner and active_photos %}
 <div id="bannerPicker" class="hidden -mx-6 px-6 py-4 bg-cream-100 border-b border-cream-200 mb-4">
     <p class="text-xs uppercase tracking-widest text-ink-400 mb-3">Elegí una foto como banner</p>
     <div class="flex gap-2 overflow-x-auto pb-2">
@@ -230,7 +230,7 @@
                 {% if photo.caption %}
                 <div class="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs px-2 py-1 truncate">{{ photo.caption }}</div>
                 {% endif %}
-                {% if user %}
+                {% if is_owner %}
                 <div class="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all">
                     <a href="/bares/{{ bar.id }}/fotos/{{ photo.id }}/set-cover" title="Usar como portada"
                         class="bg-black/60 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center hover:bg-amber-500">★</a>
@@ -248,7 +248,7 @@
             {% endfor %}
         </div>
 
-        {% if user %}
+        {% if is_owner %}
         <!-- Selector de portada -->
         <details class="bg-cream-100 border border-cream-200 rounded-2xl overflow-hidden mb-5">
             <summary class="px-4 py-3 text-xs uppercase tracking-widest text-ink-400 cursor-pointer hover:bg-cream-200 transition-all list-none flex items-center gap-2">
@@ -271,7 +271,7 @@
         <p class="text-sm text-ink-300 mb-5">Todavia no hay fotos de este bar.</p>
         {% endif %}
 
-        {% if user %}
+        {% if is_owner %}
         <form action="/bares/{{ bar.id }}/fotos" method="POST" enctype="multipart/form-data"
             class="bg-cream-100 border border-cream-200 rounded-2xl p-4">
             <p class="text-xs uppercase tracking-widest text-ink-400 mb-3">Subir fotos</p>
@@ -288,10 +288,12 @@
 
     {% if user %}
     <div class="flex gap-3 pt-6 border-t border-cream-200 flex-wrap">
+        {% if is_owner %}
         <a href="/bares/{{ bar.id }}/editar"
             class="px-5 py-2.5 bg-ink-800 text-cream-50 rounded-xl text-sm hover:bg-ink-700 transition-all">
             Editar
         </a>
+        {% endif %}
         <form action="/perfil/toggle" method="POST">
             <input type="hidden" name="type" value="bar" />
             <input type="hidden" name="item_id" value="{{ bar.id }}" />
@@ -302,10 +304,12 @@
                 ★ {% if is_featured %}En perfil{% else %}Agregar al perfil{% endif %}
             </button>
         </form>
+        {% if is_owner %}
         <a href="/bares/{{ bar.id }}/delete" onclick="return confirm('Eliminar este bar?')"
             class="px-5 py-2.5 border border-cream-300 text-ink-400 rounded-xl text-sm hover:border-red-300 hover:text-red-400 transition-all">
             Eliminar
         </a>
+        {% endif %}
     </div>
     {% endif %}
 </div>

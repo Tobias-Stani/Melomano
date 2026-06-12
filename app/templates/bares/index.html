@@ -4,10 +4,12 @@
 {% block content %}
 <div class="flex items-start justify-between mb-8 gap-4 flex-wrap">
     <div>
-        <h1 class="font-serif text-3xl font-700 text-ink-800 tracking-tight">Bares Hifi</h1>
+        <h1 class="font-serif text-3xl font-700 text-ink-800 tracking-tight">
+        {% if is_own %}Mis Bares Hifi{% else %}Bares de {{ profile_username }}{% endif %}
+    </h1>
         <p class="text-ink-400 text-sm mt-1">{{ bars|length }} lugar{% if bars|length != 1 %}es{% endif %} registrado{% if bars|length != 1 %}s{% endif %}</p>
     </div>
-    {% if user %}
+    {% if is_own %}
     <a href="/bares/nuevo"
         class="px-4 py-2 rounded-xl text-sm font-500 bg-ink-800 text-cream-50 hover:bg-ink-700 transition-all">
         + Agregar bar
@@ -51,7 +53,7 @@
 <div class="text-center py-20">
     <div class="text-6xl mb-4">🎶</div>
     <p class="font-serif text-lg text-ink-500">Todavia no hay bares registrados.</p>
-    {% if user %}
+    {% if is_own %}
     <a href="/bares/nuevo" class="inline-block mt-4 px-5 py-2.5 bg-ink-800 text-cream-50 rounded-xl text-sm hover:bg-ink-700 transition-all">
         Agregar el primero
     </a>

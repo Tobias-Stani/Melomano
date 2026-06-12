@@ -1,6 +1,7 @@
 import base64
 import datetime
 from urllib.parse import quote
+from app.utils.image import compress_to_b64
 
 from fastapi import APIRouter, Depends, Request, Form, UploadFile, File, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -39,14 +40,20 @@ def _maps_embed(bar: HifiBar) -> str:
 # ── Lista ─────────────────────────────────────────────────
 
 @router.get("/bares", response_class=HTMLResponse)
-async def bares_list(request: Request, db: Session = Depends(get_db)):
+async def bares_list(request: Request, u: str = None, db: Session = Depends(get_db)):
     user = get_current_user(request)
     if not user:
         return RedirectResponse(url="/login", status_code=302)
-    user_obj = db.query(User).filter(User.username == user).first()
-    bars = db.query(HifiBar).filter(HifiBar.user_id == user_obj.id).order_by(HifiBar.name).all()
-    return templates.TemplateResponse("bares.html", {
-        "request": request, "user": user, "bars": bars,
+    if u:
+        target = db.query(User).filter(User.username == u).first()
+        is_own  = False
+    else:
+        target = db.query(User).filter(User.username == user).first()
+        is_own  = True
+    bars = db.query(HifiBar).filter(HifiBar.user_id == target.id).order_by(HifiBar.name).all() if target else []
+    return templates.TemplateResponse("bares/index.html", {
+        "request": request, "user": user, "bars": bars, "is_own": is_own,
+        "profile_username": (target.display_name or target.username) if target else "",
     })
 
 
@@ -57,7 +64,7 @@ async def bar_new(request: Request):
     user = get_current_user(request)
     if not user:
         return RedirectResponse(url="/login", status_code=302)
-    return templates.TemplateResponse("bar_form.html", {
+    return templates.TemplateResponse("bares/form.html", {
         "request": request, "user": user, "bar": None, "error": None,
     })
 
@@ -99,23 +106,25 @@ async def bar_detail(bar_id: int, request: Request, db: Session = Depends(get_db
     user = get_current_user(request)
     if not user:
         return RedirectResponse(url="/login", status_code=302)
-    user_obj = db.query(User).filter(User.username == user).first()
-    bar  = db.query(HifiBar).filter(HifiBar.id == bar_id, HifiBar.user_id == user_obj.id).first()
+    bar = db.query(HifiBar).filter(HifiBar.id == bar_id).first()
     if not bar:
         raise HTTPException(status_code=404)
+    user_obj      = db.query(User).filter(User.username == user).first()
+    is_owner      = user_obj and bar.user_id == user_obj.id
     active_photos = [p for p in bar.photos if p.deleted_at is None]
-    is_featured   = bool(user and db.query(FeaturedItem).filter(
-        FeaturedItem.type == "bar", FeaturedItem.item_id == bar_id
+    is_featured   = bool(user_obj and db.query(FeaturedItem).filter(
+        FeaturedItem.type == "bar", FeaturedItem.item_id == bar_id,
+        FeaturedItem.user_id == user_obj.id,
     ).first())
-    user_obj = db.query(User).filter(User.username == user).first() if user else None
     user_visits = db.query(BarVisit).filter(
         BarVisit.bar_id == bar_id,
-        BarVisit.user_id == user_obj.id
+        BarVisit.user_id == user_obj.id,
     ).order_by(desc(BarVisit.date)).all() if user_obj else []
-    return templates.TemplateResponse("bar_detail.html", {
+    return templates.TemplateResponse("bares/detail.html", {
         "request":       request,
         "user":          user,
         "bar":           bar,
+        "is_owner":      is_owner,
         "active_photos": active_photos,
         "emojis":        EMOJIS,
         "maps_embed":    _maps_embed(bar),
@@ -134,7 +143,7 @@ async def bar_edit(bar_id: int, request: Request, db: Session = Depends(get_db))
     bar = db.query(HifiBar).filter(HifiBar.id == bar_id).first()
     if not bar:
         raise HTTPException(status_code=404)
-    return templates.TemplateResponse("bar_form.html", {
+    return templates.TemplateResponse("bares/form.html", {
         "request": request, "user": get_current_user(request), "bar": bar, "error": None,
     })
 
@@ -212,7 +221,7 @@ async def visit_edit_form(bar_id: int, visit_id: int, request: Request, db: Sess
     visit = db.query(BarVisit).filter(BarVisit.id == visit_id, BarVisit.bar_id == bar_id).first()
     if not bar or not visit:
         raise HTTPException(status_code=404)
-    return templates.TemplateResponse("visit_edit.html", {
+    return templates.TemplateResponse("bares/visit_edit.html", {
         "request": request,
         "user":    get_current_user(request),
         "bar":     bar,
@@ -267,10 +276,11 @@ async def photos_upload(
         raw = await photo.read()
         if not raw:
             continue
+        encoded, mime = compress_to_b64(raw)
         db.add(BarPhoto(
             bar_id=bar_id,
-            data=base64.b64encode(raw).decode(),
-            mime_type=photo.content_type or "image/jpeg",
+            data=encoded,
+            mime_type=mime,
         ))
     db.commit()
     return RedirectResponse(url=f"/bares/{bar_id}#fotos", status_code=303)

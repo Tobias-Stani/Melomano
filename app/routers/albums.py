@@ -38,13 +38,19 @@ SORT_OPTIONS = {
 
 
 @router.get("/", response_class=HTMLResponse)
-async def gallery(request: Request, q: str = None, filter: str = "all", fmt: str = "", sort: str = "added", db: Session = Depends(get_db)):
+async def gallery(request: Request, q: str = None, filter: str = "all", fmt: str = "", sort: str = "added", u: str = None, db: Session = Depends(get_db)):
     username = get_current_user(request)
-    if not username:
+    if u:
+        # Colección pública de otro usuario
+        user_obj = _get_user_obj(u, db)
+        is_own   = False
+    elif username:
+        user_obj = _get_user_obj(username, db)
+        is_own   = True
+    else:
         # Vista publica: mostrar la coleccion del admin
         user_obj = db.query(User).filter(User.is_admin == True).first()
-    else:
-        user_obj = _get_user_obj(username, db)
+        is_own   = False
     uid = user_obj.id if user_obj else None
 
     query = db.query(Album).filter(Album.deleted_at == None, Album.user_id == uid)
@@ -113,10 +119,11 @@ async def gallery(request: Request, q: str = None, filter: str = "all", fmt: str
         .scalar()
     )
 
-    return templates.TemplateResponse("gallery.html", {
+    return templates.TemplateResponse("albums/index.html", {
         "request":     request,
         "user":        username,
         "user_obj":    user_obj,
+        "is_own":      is_own,
         "albums":      albums,
         "total":       total,
         "q":           q or "",
@@ -149,7 +156,7 @@ async def album_detail(album_id: int, request: Request, db: Session = Depends(ge
         FavoriteTrack.user_id == user_obj.id,
     ).first() if user_obj else None
     crate = db.query(Crate).filter(Crate.id == album.crate_id).first() if album.crate_id else None
-    return templates.TemplateResponse("album_detail.html", {
+    return templates.TemplateResponse("albums/detail.html", {
         "request": request, "user": user, "album": album,
         "is_featured": is_featured, "format_types": format_types,
         "extra": discogs_extra, "fav_track": fav_track, "crate": crate,
@@ -192,7 +199,7 @@ async def edit_album_form(album_id: int, request: Request, db: Session = Depends
     if not album:
         raise HTTPException(status_code=404, detail="Album no encontrado")
     format_types = db.query(FormatType).order_by(FormatType.name).all()
-    return templates.TemplateResponse("album_edit.html", {
+    return templates.TemplateResponse("albums/edit.html", {
         "request": request, "user": user, "album": album, "format_types": format_types,
     })
 
@@ -267,7 +274,7 @@ async def sync_status(request: Request, log_id: int = None, db: Session = Depend
     from app.models.sync_log import SyncLog
     logs = db.query(SyncLog).order_by(desc(SyncLog.started_at)).limit(10).all()
     current = db.query(SyncLog).filter(SyncLog.id == log_id).first() if log_id else None
-    return templates.TemplateResponse("sync_status.html", {
+    return templates.TemplateResponse("sync/status.html", {
         "request": request, "user": user, "logs": logs, "current": current,
     })
 

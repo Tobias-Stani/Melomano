@@ -1,5 +1,6 @@
 import base64
 import datetime
+from app.utils.image import compress_to_b64
 
 from fastapi import APIRouter, Depends, Request, Form, HTTPException, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -21,14 +22,20 @@ EMOJIS = {1:'😞',2:'😔',3:'😐',4:'🙂',5:'😊',6:'😁',7:'🤩',8:'🔥
 
 
 @router.get("/concerts", response_class=HTMLResponse)
-async def concerts_list(request: Request, db: Session = Depends(get_db)):
+async def concerts_list(request: Request, u: str = None, db: Session = Depends(get_db)):
     user = get_current_user(request)
     if not user:
         return RedirectResponse(url="/login", status_code=302)
-    user_obj = db.query(User).filter(User.username == user).first()
-    concerts = db.query(Concert).filter(Concert.user_id == user_obj.id).order_by(desc(Concert.date)).all()
-    return templates.TemplateResponse("concerts.html", {
-        "request": request, "user": user, "concerts": concerts, "emojis": EMOJIS,
+    if u:
+        target = db.query(User).filter(User.username == u).first()
+        is_own  = False
+    else:
+        target = db.query(User).filter(User.username == user).first()
+        is_own  = True
+    concerts = db.query(Concert).filter(Concert.user_id == target.id).order_by(desc(Concert.date)).all() if target else []
+    return templates.TemplateResponse("concerts/index.html", {
+        "request": request, "user": user, "concerts": concerts, "emojis": EMOJIS, "is_own": is_own,
+        "profile_username": (target.display_name or target.username) if target else "",
     })
 
 
@@ -37,7 +44,7 @@ async def concert_new(request: Request):
     user = get_current_user(request)
     if not user:
         return RedirectResponse(url="/login", status_code=302)
-    return templates.TemplateResponse("concert_form.html", {
+    return templates.TemplateResponse("concerts/form.html", {
         "request": request, "user": user, "concert": None, "today": datetime.date.today().isoformat(),
     })
 
@@ -93,7 +100,7 @@ async def concert_detail(concert_id: int, request: Request, db: Session = Depend
         FeaturedItem.type == "concert", FeaturedItem.item_id == concert_id
     ).first() is not None
     active_photos = [p for p in concert.photos if p.deleted_at is None]
-    return templates.TemplateResponse("concert_detail.html", {
+    return templates.TemplateResponse("concerts/detail.html", {
         "request":      request,
         "user":         user,
         "concert":      concert,
@@ -111,7 +118,7 @@ async def concert_edit(concert_id: int, request: Request, db: Session = Depends(
     concert = db.query(Concert).filter(Concert.id == concert_id).first()
     if not concert:
         raise HTTPException(status_code=404)
-    return templates.TemplateResponse("concert_form.html", {
+    return templates.TemplateResponse("concerts/form.html", {
         "request": request, "user": user, "concert": concert,
         "today": datetime.date.today().isoformat(),
     })
@@ -185,12 +192,12 @@ async def upload_photos(
         raw = await photo.read()
         if not raw:
             continue
-        encoded = base64.b64encode(raw).decode("utf-8")
+        encoded, mime = compress_to_b64(raw)
         caption = captions[i] if i < len(captions) else None
         db.add(ConcertPhoto(
             concert_id=concert_id,
             data=encoded,
-            mime_type=photo.content_type or "image/jpeg",
+            mime_type=mime,
             caption=caption or None,
         ))
 

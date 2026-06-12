@@ -24,7 +24,7 @@ async def users_list(request: Request, db: Session = Depends(get_db)):
     if not admin:
         return RedirectResponse(url="/", status_code=302)
     users = db.query(User).order_by(User.created_at).all()
-    return templates.TemplateResponse("users.html", {
+    return templates.TemplateResponse("users/index.html", {
         "request": request, "user": admin.username, "users": users,
     })
 
@@ -34,7 +34,7 @@ async def user_new(request: Request, db: Session = Depends(get_db)):
     admin = _require_admin(request, db)
     if not admin:
         return RedirectResponse(url="/", status_code=302)
-    return templates.TemplateResponse("user_form.html", {
+    return templates.TemplateResponse("users/form.html", {
         "request": request, "user": admin.username, "profile": None, "error": None,
     })
 
@@ -53,7 +53,7 @@ async def user_create(
         return RedirectResponse(url="/", status_code=302)
 
     if db.query(User).filter(User.username == username).first():
-        return templates.TemplateResponse("user_form.html", {
+        return templates.TemplateResponse("users/form.html", {
             "request": request, "user": admin.username, "profile": None,
             "error": "Ese nombre de usuario ya existe.",
         }, status_code=400)
@@ -77,7 +77,7 @@ async def user_edit(username: str, request: Request, db: Session = Depends(get_d
     profile = db.query(User).filter(User.username == username).first()
     if not profile:
         return RedirectResponse(url="/usuarios", status_code=302)
-    return templates.TemplateResponse("user_form.html", {
+    return templates.TemplateResponse("users/form.html", {
         "request": request, "user": admin.username, "profile": profile, "error": None,
     })
 

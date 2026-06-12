@@ -1,4 +1,5 @@
 import base64
+from app.utils.image import compress_to_b64
 
 from fastapi import APIRouter, Depends, Request, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
@@ -50,7 +51,7 @@ async def perfil_index(request: Request, db: Session = Depends(get_db)):
     if username:
         return RedirectResponse(url=f"/perfil/{username}", status_code=302)
     users = db.query(User).order_by(User.created_at).all()
-    return templates.TemplateResponse("perfil_lista.html", {
+    return templates.TemplateResponse("perfil/lista.html", {
         "request": request, "user": None, "users": users,
     })
 
@@ -61,7 +62,7 @@ async def perfil_edit_info(request: Request, db: Session = Depends(get_db)):
     if not username:
         return RedirectResponse(url="/login", status_code=302)
     user_obj = _get_user_obj(db, username)
-    return templates.TemplateResponse("perfil_edit_info.html", {
+    return templates.TemplateResponse("perfil/edit_info.html", {
         "request": request, "user": username, "profile": user_obj,
     })
 
@@ -87,7 +88,8 @@ async def perfil_save_info(
     if avatar and avatar.filename:
         raw = await avatar.read()
         if raw:
-            user_obj.avatar = f"data:{avatar.content_type};base64,{base64.b64encode(raw).decode()}"
+            encoded, mime = compress_to_b64(raw)
+            user_obj.avatar = f"data:{mime};base64,{encoded}"
 
     db.commit()
     return RedirectResponse(url=f"/perfil/{username}", status_code=303)
@@ -103,7 +105,7 @@ async def perfil_select_favorites(request: Request, db: Session = Depends(get_db
     all_albums   = db.query(Album).order_by(Album.artist, Album.title).all()
     all_concerts = db.query(Concert).order_by(Concert.date.desc()).all()
     all_bars     = db.query(HifiBar).order_by(HifiBar.name).all()
-    return templates.TemplateResponse("perfil_edit_favorites.html", {
+    return templates.TemplateResponse("perfil/edit_favorites.html", {
         "request":      request,
         "user":         username,
         "profile":      user_obj,
@@ -163,7 +165,7 @@ async def perfil_usuario(username: str, request: Request, db: Session = Depends(
         .first()
     )
 
-    return templates.TemplateResponse("perfil_user.html", {
+    return templates.TemplateResponse("perfil/user.html", {
         "request":      request,
         "user":         current_user,
         "profile":      profile,

@@ -17,7 +17,7 @@ async def formatos_list(request: Request, db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse(url="/login", status_code=302)
     formats = db.query(FormatType).order_by(FormatType.name).all()
-    return templates.TemplateResponse("formatos.html", {
+    return templates.TemplateResponse("formatos/index.html", {
         "request": request, "user": user, "formats": formats,
     })
 

@@ -4,10 +4,12 @@
 {% block content %}
 <div class="flex items-center justify-between mb-8">
     <div>
-        <h1 class="font-serif text-3xl font-700 text-ink-800 tracking-tight">Recitales</h1>
+        <h1 class="font-serif text-3xl font-700 text-ink-800 tracking-tight">
+        {% if is_own %}Mis recitales{% else %}Recitales de {{ profile_username }}{% endif %}
+    </h1>
         <p class="text-ink-400 text-sm mt-1">{{ concerts|length }} shows registrados</p>
     </div>
-    {% if user %}
+    {% if is_own %}
     <a href="/concerts/new" class="px-4 py-2 bg-ink-800 text-cream-50 rounded-xl text-sm hover:bg-ink-700 transition-all">
         + Nuevo recital
     </a>
@@ -83,7 +85,7 @@
 <div class="text-center py-20">
     <div class="text-6xl mb-4">🎤</div>
     <p class="font-serif text-lg text-ink-500">No hay recitales registrados.</p>
-    {% if user %}
+    {% if is_own %}
     <a href="/concerts/new" class="mt-3 inline-block text-sm underline underline-offset-2 text-ink-400 hover:text-ink-700">
         Registrar mi primer show
     </a>

@@ -53,7 +53,7 @@
                 <span class="text-xs text-ink-300 italic">arrastrá para reordenar</span>
                 {% endif %}
             </div>
-            <a href="/" class="text-xs text-ink-400 hover:text-ink-700 transition-all hover:underline">Ver todos →</a>
+            <a href="/?u={{ profile.username }}" class="text-xs text-ink-400 hover:text-ink-700 transition-all hover:underline">Ver todos →</a>
         </div>
 
         {% if albums %}
@@ -98,7 +98,7 @@
     <section class="mb-12">
         <div class="flex items-center justify-between mb-5">
             <p class="text-xs uppercase tracking-widest text-ink-400">Bares hifi favoritos</p>
-            <a href="/bares" class="text-xs text-ink-400 hover:text-ink-700 transition-all hover:underline">Ver todos →</a>
+            <a href="/bares?u={{ profile.username }}" class="text-xs text-ink-400 hover:text-ink-700 transition-all hover:underline">Ver todos →</a>
         </div>
         {% if bars %}
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -135,7 +135,7 @@
     <section>
         <div class="flex items-center justify-between mb-5">
             <p class="text-xs uppercase tracking-widest text-ink-400">Recitales favoritos</p>
-            <a href="/concerts" class="text-xs text-ink-400 hover:text-ink-700 transition-all hover:underline">Ver todos →</a>
+            <a href="/concerts?u={{ profile.username }}" class="text-xs text-ink-400 hover:text-ink-700 transition-all hover:underline">Ver todos →</a>
         </div>
         {% if concerts %}
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
