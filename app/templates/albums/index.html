@@ -716,21 +716,36 @@ function showPicked(a) {
 {% block scripts %}
 <script>
 // ═══ Recomendacion del dia ═══
+const RECOMMEND_TTL_MS = 12 * 60 * 60 * 1000; // 12 horas
+
+function _showRecommend(data) {
+    const card  = document.getElementById('recommendCard');
+    const cover = document.getElementById('recommendCover');
+    cover.innerHTML = data.cover_url
+        ? `<img src="${data.cover_url}" class="w-full h-full object-cover rounded-xl" onerror="this.parentElement.innerHTML='🎵'" />`
+        : '🎵';
+    document.getElementById('recommendTitle').textContent  = data.title;
+    document.getElementById('recommendArtist').textContent = data.artist + (data.year ? ` · ${data.year}` : '');
+    document.getElementById('recommendReason').textContent = data.reason;
+    document.getElementById('recommendLink').href = `/album/${data.id}`;
+    card.classList.remove('hidden');
+}
+
 async function loadRecommend() {
     try {
+        const cached = localStorage.getItem('melomano_recommend');
+        if (cached) {
+            const { data, ts } = JSON.parse(cached);
+            if (Date.now() - ts < RECOMMEND_TTL_MS) {
+                _showRecommend(data);
+                return;
+            }
+        }
         const resp = await fetch('/api/recommend');
         const data = await resp.json();
         if (data.error) return;
-        const card = document.getElementById('recommendCard');
-        const cover = document.getElementById('recommendCover');
-        cover.innerHTML = data.cover_url
-            ? `<img src="${data.cover_url}" class="w-full h-full object-cover rounded-xl" onerror="this.parentElement.innerHTML='🎵'" />`
-            : '🎵';
-        document.getElementById('recommendTitle').textContent = data.title;
-        document.getElementById('recommendArtist').textContent = data.artist + (data.year ? ` · ${data.year}` : '');
-        document.getElementById('recommendReason').textContent = data.reason;
-        document.getElementById('recommendLink').href = `/album/${data.id}`;
-        card.classList.remove('hidden');
+        localStorage.setItem('melomano_recommend', JSON.stringify({ data, ts: Date.now() }));
+        _showRecommend(data);
     } catch(e) {}
 }
 loadRecommend();

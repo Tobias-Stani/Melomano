@@ -539,17 +539,21 @@ async def recommend_album(request: Request, db: Session = Depends(get_db)):
         if admin:
             base = base.filter(Album.user_id == admin.id)
 
-    ids = [r[0] for r in base.with_entities(Album.id).all()]
+    ids = sorted(r[0] for r in base.with_entities(Album.id).all())
     if not ids:
         return JSONResponse({"error": "No hay discos"})
 
-    # Usar la fecha como seed para que sea el mismo disco todo el dia
-    today = date.today().isoformat()
-    seed = hashlib.md5((today + str(ids)).encode()).hexdigest()
-    rng = random.Random(seed)
-    picked_id = rng.choice(ids)
+    # Seed estable: fecha + usuario, sin depender de la lista
+    # Período de 12hs: hora // 12 da 0 (00-11hs) o 1 (12-23hs)
+    from datetime import datetime as dt
+    now = dt.now()
+    period = f"{now.date().isoformat()}-{now.hour // 12}"
+    seed_str = period + (username or "guest")
+    seed = int(hashlib.md5(seed_str.encode()).hexdigest(), 16)
+    picked_id = ids[seed % len(ids)]
 
     album = db.query(Album).filter(Album.id == picked_id).first()
+    rng = random.Random(seed)
     reason = rng.choice(REASONS)
 
     return JSONResponse({
