@@ -1,4 +1,5 @@
 import os
+import asyncio
 import httpx
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -20,13 +21,18 @@ def _headers() -> dict:
 
 
 async def fetch_collection_page(page: int = 1, per_page: int = 100) -> dict:
-    """Trae una pagina de la coleccion del usuario."""
     url = f"{BASE_URL}/users/{DISCOGS_USERNAME}/collection/folders/0/releases"
     params = {"page": page, "per_page": per_page, "sort": "added", "sort_order": "desc"}
-    async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.get(url, headers=_headers(), params=params)
-        resp.raise_for_status()
-        return resp.json()
+    for attempt in range(4):
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.get(url, headers=_headers(), params=params)
+            if resp.status_code == 429:
+                wait = int(resp.headers.get("Retry-After", 60))
+                await asyncio.sleep(wait)
+                continue
+            resp.raise_for_status()
+            return resp.json()
+    raise Exception("Discogs rate limit: demasiados intentos fallidos (429). Esperá un minuto y volvé a intentar.")
 
 
 def _parse_release(item: dict) -> dict:
@@ -122,6 +128,7 @@ async def sync_collection(db: Session, user_id: int = None) -> SyncLog:
             if page >= pages:
                 break
             page += 1
+            await asyncio.sleep(1)  # Discogs: max 60 req/min
 
         log.status      = "success"
         log.added       = added
@@ -143,15 +150,22 @@ async def sync_collection(db: Session, user_id: int = None) -> SyncLog:
 
 
 async def fetch_release_details(discogs_id: int) -> dict | None:
-    """Trae el detalle completo de un release: imágenes, tracklist, notas, videos."""
     url = f"{BASE_URL}/releases/{discogs_id}"
-    async with httpx.AsyncClient(timeout=15) as client:
-        try:
-            resp = await client.get(url, headers=_headers())
-            resp.raise_for_status()
-            data = resp.json()
-        except Exception:
-            return None
+    for attempt in range(3):
+        async with httpx.AsyncClient(timeout=15) as client:
+            try:
+                resp = await client.get(url, headers=_headers())
+                if resp.status_code == 429:
+                    wait = int(resp.headers.get("Retry-After", 30))
+                    await asyncio.sleep(wait)
+                    continue
+                resp.raise_for_status()
+                data = resp.json()
+                break
+            except Exception:
+                return None
+    else:
+        return None
 
     images   = data.get("images", [])
     tracklist = data.get("tracklist", [])

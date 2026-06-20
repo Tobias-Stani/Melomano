@@ -55,11 +55,13 @@
             class="px-4 py-2 rounded-xl text-sm font-500 bg-ink-800 text-cream-50 hover:bg-ink-700 transition-all">
             + Agregar disco
         </button>
+        {% if user_obj and user_obj.is_admin %}
         <form action="/sync/discogs" method="POST">
             <button type="submit" class="px-4 py-2 rounded-xl text-sm font-500 border border-cream-300 text-ink-600 hover:bg-cream-200 transition-all">
                 ↻ Sync Discogs
             </button>
         </form>
+        {% endif %}
         {% endif %}
     </div>
 </div>
