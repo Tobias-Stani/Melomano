@@ -129,6 +129,10 @@
                     class="flex items-center gap-1.5 text-sm px-3 py-1 rounded-full border transition-all border-cream-300 text-ink-400 hover:border-emerald-400 hover:text-emerald-600">
                     🎧 Estoy escuchando
                 </button>
+                <button onclick="toggleAlbumChat()"
+                    class="flex items-center gap-1.5 text-sm px-3 py-1 rounded-full border transition-all border-cream-300 text-ink-400 hover:border-purple-400 hover:text-purple-600">
+                    🤖 Resumen del disco
+                </button>
                 <a href="/album/{{ album.id }}/delete"
                     onclick="return confirm('Eliminar este album?')"
                     class="text-sm text-ink-300 hover:text-red-400 transition-all">
@@ -150,8 +154,95 @@
             }
             </script>
             {% endif %}
+
         </div>
     </div>
+
+    {% if user %}
+    <!-- Panel de resumen/chat acotado a este disco -->
+    <div id="albumChatPanel" class="hidden mb-6 bg-cream-100 border border-purple-200 rounded-2xl overflow-hidden">
+        <div class="flex items-center justify-between px-4 py-3 bg-purple-50 border-b border-purple-200">
+            <p class="text-sm font-600 text-purple-700">🤖 Preguntale a la IA sobre este disco</p>
+            <button onclick="toggleAlbumChat()" class="text-ink-300 hover:text-ink-600 text-lg leading-none">&times;</button>
+        </div>
+        <div id="albumChatMessages" class="px-4 py-3 space-y-2 text-sm max-h-72 overflow-y-auto"></div>
+        <form id="albumChatForm" class="flex items-center gap-2 p-3 border-t border-cream-200">
+            <input id="albumChatInput" type="text" placeholder="Ej: ¿de qué trata este disco?" autocomplete="off"
+                class="flex-1 bg-white border border-cream-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+            <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-xl text-sm hover:bg-purple-500 transition-all">Enviar</button>
+        </form>
+    </div>
+    <script>
+        const ALBUM_ID = {{ album.id }};
+        let albumChatHistory = [];
+        let albumChatOpened  = false;
+
+        function toggleAlbumChat() {
+            const panel = document.getElementById('albumChatPanel');
+            panel.classList.toggle('hidden');
+            if (!panel.classList.contains('hidden') && !albumChatOpened) {
+                albumChatOpened = true;
+                _albumSendAuto('Hacé un resumen breve de este disco.');
+            }
+        }
+
+        function _albumAddBubble(text, role) {
+            const box = document.getElementById('albumChatMessages');
+            const bubble = document.createElement('div');
+            bubble.className = role === 'user'
+                ? 'ml-auto max-w-[85%] bg-purple-600 text-white rounded-xl px-3 py-2'
+                : 'mr-auto max-w-[85%] bg-white border border-cream-200 text-ink-800 rounded-xl px-3 py-2';
+            bubble.textContent = text;
+            box.appendChild(bubble);
+            box.scrollTop = box.scrollHeight;
+            return bubble;
+        }
+
+        async function _albumAsk(text) {
+            albumChatHistory.push({ role: 'user', content: text });
+            const box    = document.getElementById('albumChatMessages');
+            const bubble = _albumAddBubble('', 'assistant');
+            let fullText = '';
+            try {
+                const resp = await fetch(`/api/chat/album/${ALBUM_ID}`, {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ messages: albumChatHistory }),
+                });
+                if (!resp.ok || !resp.body) {
+                    bubble.textContent = 'No se pudo responder ahora, probá de nuevo en un rato.';
+                    return;
+                }
+                const reader  = resp.body.getReader();
+                const decoder = new TextDecoder();
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    fullText += decoder.decode(value, { stream: true });
+                    bubble.textContent = fullText;
+                    box.scrollTop = box.scrollHeight;
+                }
+                albumChatHistory.push({ role: 'assistant', content: fullText });
+            } catch (err) {
+                bubble.textContent = 'No se pudo conectar.';
+            }
+        }
+
+        async function _albumSendAuto(text) {
+            await _albumAsk(text);
+        }
+
+        document.getElementById('albumChatForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('albumChatInput');
+            const text  = input.value.trim();
+            if (!text) return;
+            input.value = '';
+            _albumAddBubble(text, 'user');
+            await _albumAsk(text);
+        });
+    </script>
+    {% endif %}
 
     <!-- Notas del release -->
     {% if extra and extra.notes %}

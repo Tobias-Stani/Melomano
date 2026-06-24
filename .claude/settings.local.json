@@ -16,7 +16,8 @@
       "Bash(winget install *)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/bateas)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/)",
-      "Bash(docker run *)"
+      "Bash(docker run *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:8000/)"
     ]
   }
 }

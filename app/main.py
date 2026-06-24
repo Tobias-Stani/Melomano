@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 
 from app.database import engine, Base, SessionLocal
 from app.routers import auth, albums, concerts
-from app.routers import perfil, users, bares, formatos, crates
+from app.routers import perfil, users, bares, formatos, crates, chat, admin_ai
 from app.models import concert_photo  # noqa: F401
 from app.models import featured       # noqa: F401
 from app.models import user as user_model  # noqa: F401
@@ -62,3 +62,5 @@ app.include_router(users.router)
 app.include_router(bares.router)
 app.include_router(formatos.router)
 app.include_router(crates.router)
+app.include_router(chat.router)
+app.include_router(admin_ai.router)

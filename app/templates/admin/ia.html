@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Estado de la IA — Melomano{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+
+    <div class="mb-8">
+        <h1 class="font-serif text-3xl font-700 text-ink-800 tracking-tight">🤖 Estado de la IA</h1>
+        <p class="text-ink-400 text-sm mt-1">Modelo: <span class="font-600 text-ink-600">{{ model }}</span> · Proveedor: <span class="font-600 text-ink-600">{{ base_url }}</span></p>
+    </div>
+
+    {% if error %}
+    <div class="bg-red-50 border border-red-200 rounded-2xl p-5 text-sm text-red-600">
+        No se pudo consultar el estado: {{ error }}
+    </div>
+    {% else %}
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-6">
+
+        <!-- Requests -->
+        <div class="bg-cream-100 border border-cream-200 rounded-2xl p-5">
+            <p class="text-xs uppercase tracking-widest text-ink-400 mb-3">Requests hoy</p>
+            <p class="font-serif text-3xl font-700 text-ink-800">
+                {{ status.remaining_requests }} <span class="text-base text-ink-400 font-sans font-400">/ {{ status.limit_requests }}</span>
+            </p>
+            {% set pct_req = ((status.remaining_requests|int) / (status.limit_requests|int) * 100) if status.limit_requests else 0 %}
+            <div class="w-full bg-cream-200 rounded-full h-2 mt-3 overflow-hidden">
+                <div class="h-full bg-emerald-500 rounded-full" style="width:{{ pct_req }}%;"></div>
+            </div>
+            <p class="text-xs text-ink-300 mt-2">Se reinicia en {{ status.reset_requests }}</p>
+        </div>
+
+        <!-- Tokens -->
+        <div class="bg-cream-100 border border-cream-200 rounded-2xl p-5">
+            <p class="text-xs uppercase tracking-widest text-ink-400 mb-3">Tokens este minuto</p>
+            <p class="font-serif text-3xl font-700 text-ink-800">
+                {{ status.remaining_tokens }} <span class="text-base text-ink-400 font-sans font-400">/ {{ status.limit_tokens }}</span>
+            </p>
+            {% set pct_tok = ((status.remaining_tokens|int) / (status.limit_tokens|int) * 100) if status.limit_tokens else 0 %}
+            <div class="w-full bg-cream-200 rounded-full h-2 mt-3 overflow-hidden">
+                <div class="h-full bg-sky-500 rounded-full" style="width:{{ pct_tok }}%;"></div>
+            </div>
+            <p class="text-xs text-ink-300 mt-2">Se reinicia en {{ status.reset_tokens }}</p>
+        </div>
+
+    </div>
+
+    <p class="text-xs text-ink-300">
+        Estos números vienen directo de los headers de la API del proveedor en el momento de cargar esta página
+        (consultar esto consume 1 request mínimo). Para el detalle oficial completo por modelo, también podés ver
+        <a href="https://console.groq.com/settings/limits" target="_blank" class="underline hover:text-ink-600">el panel de Groq</a>.
+    </p>
+
+    {% endif %}
+
+    <div class="mt-8 pt-6 border-t border-cream-200">
+        <a href="?" class="px-4 py-2 rounded-xl text-sm font-500 border border-cream-300 text-ink-600 hover:bg-cream-200 transition-all">
+            ↻ Actualizar
+        </a>
+    </div>
+
+</div>
+{% endblock %}
