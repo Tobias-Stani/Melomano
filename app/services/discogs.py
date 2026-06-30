@@ -167,13 +167,35 @@ async def fetch_release_details(discogs_id: int) -> dict | None:
     else:
         return None
 
-    images   = data.get("images", [])
+    images    = data.get("images", [])
     tracklist = data.get("tracklist", [])
-    videos   = data.get("videos", [])
+    videos    = data.get("videos", [])
     community = data.get("community", {})
-    rating   = community.get("rating", {})
+    rating    = community.get("rating", {})
+
+    # Metadatos básicos (útiles para resolver un release por URL)
+    artists     = data.get("artists", [])
+    artist_name = " / ".join(a.get("name", "").strip() for a in artists) if artists else "Desconocido"
+    labels      = data.get("labels", [])
+    label_name  = labels[0].get("name", "") if labels else None
+    formats     = data.get("formats", [])
+    format_type = formats[0].get("name", "") if formats else None
+    genres      = data.get("genres", [])
+    styles      = data.get("styles", [])
+    genre       = ", ".join(genres + styles) if (genres or styles) else None
+    primary_img = next((img.get("uri") for img in images if img.get("type") == "primary"), None) or (images[0].get("uri") if images else None)
 
     return {
+        # Metadatos básicos del release
+        "title":       data.get("title"),
+        "artist":      artist_name,
+        "year":        data.get("year"),
+        "genre":       genre,
+        "label":       label_name,
+        "format_type": format_type,
+        "cover_url":   primary_img,
+        "discogs_url": f"https://www.discogs.com/release/{discogs_id}",
+        # Extras
         "images":    [{"url": img.get("uri"), "type": img.get("type")} for img in images if img.get("uri")],
         "tracklist": [{"pos": t.get("position", ""), "title": t.get("title", ""), "duration": t.get("duration", "")} for t in tracklist],
         "notes":     data.get("notes"),

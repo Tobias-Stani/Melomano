@@ -9,6 +9,7 @@ from app.models.concert import Concert
 from app.models.hifi_bar import HifiBar
 from app.models.crate import Crate
 from app.models.user import User
+from app.models.wishlist_item import WishlistItem
 from app.auth import get_current_user
 from app.services.ai_chat import chat_completion_stream, AIChatError
 from app.services.discogs import fetch_release_details
@@ -202,6 +203,63 @@ async def chat_album(album_id: int, request: Request, db: Session = Depends(get_
 
     body     = await request.json()
     history  = body.get("messages", [])[-MAX_HISTORY:]
+    messages = [{"role": "system", "content": system_prompt}] + history
+
+    async def gen():
+        try:
+            async for chunk in chat_completion_stream(messages):
+                yield chunk
+        except AIChatError as e:
+            yield f"[[error]] {e}"
+
+    return StreamingResponse(gen(), media_type="text/plain")
+
+
+@router.post("/wishlist/{item_id}")
+async def chat_wishlist(item_id: int, request: Request, db: Session = Depends(get_db)):
+    if not get_current_user(request):
+        return JSONResponse({"error": "no autorizado"}, status_code=401)
+
+    item = db.query(WishlistItem).filter(WishlistItem.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404)
+
+    extra = await fetch_release_details(item.discogs_id) if item.discogs_id else None
+
+    lines = [f"Título: {item.title}", f"Artista: {item.artist}"]
+    if item.year:        lines.append(f"Año: {item.year}")
+    if item.genre:       lines.append(f"Género: {item.genre}")
+    if item.label:       lines.append(f"Sello: {item.label}")
+    if item.format_type: lines.append(f"Formato: {item.format_type}")
+    if item.notes:       lines.append(f"Notas del usuario: {item.notes}")
+    lines.append("Estado: en la wishlist del usuario (todavía no lo tiene)")
+    if extra:
+        if extra.get("released"):  lines.append(f"Fecha de edición (Discogs): {extra['released']}")
+        if extra.get("country"):   lines.append(f"País: {extra['country']}")
+        if extra.get("notes"):     lines.append(f"Notas del release: {extra['notes']}")
+        if extra.get("tracklist"):
+            tracks = ", ".join(t["title"] for t in extra["tracklist"] if t.get("title"))
+            if tracks: lines.append(f"Tracklist: {tracks}")
+        if extra.get("rating_avg"):
+            lines.append(f"Puntuación Discogs: {extra['rating_avg']}/5 ({extra.get('rating_count', '?')} votos)")
+        if extra.get("community_have"):
+            lines.append(f"Personas que lo tienen (Discogs): {extra['community_have']}")
+        if extra.get("community_want"):
+            lines.append(f"Personas que lo quieren (Discogs): {extra['community_want']}")
+        if extra.get("lowest_price") is not None:
+            lines.append(f"Precio más bajo en marketplace Discogs: ${extra['lowest_price']}")
+
+    context = "\n".join(lines)
+    system_prompt = (
+        "Sos un asistente que habla EXCLUSIVAMENTE sobre el siguiente disco de la wishlist del usuario. "
+        "No respondas sobre otros temas. Podés hablar de la música, el artista, el álbum, "
+        "el tracklist, la historia del disco, y datos de Discogs que te paso. "
+        "Respondé corto y en español.\n\n"
+        f"Datos del disco:\n{context}"
+    )
+
+    body    = await request.json()
+    history = body.get("messages", [])[-MAX_HISTORY:]
     messages = [{"role": "system", "content": system_prompt}] + history
 
     async def gen():

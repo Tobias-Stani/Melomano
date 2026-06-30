@@ -75,59 +75,75 @@
 
     <!-- Navbar -->
     <nav class="border-b border-cream-200 bg-cream-50 sticky top-0 z-40">
-        <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
-            <a href="/" class="flex items-center gap-2.5">
+        <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
+
+            <!-- Logo -->
+            <a href="/" class="flex items-center gap-2.5 flex-shrink-0">
                 <span class="text-2xl">🎵</span>
                 <span class="font-serif text-xl font-700 text-ink-800 tracking-tight">Melomano</span>
             </a>
 
-            <!-- Desktop nav -->
-            <div class="hidden md:flex items-center gap-1">
+            <!-- Desktop: links principales -->
+            <div class="hidden md:flex items-center gap-1 flex-1">
+                {% set nav_links = [
+                    ('/', 'Colección',  request.url.path == '/'),
+                    ('/concerts', 'Recitales', '/concerts' in request.url.path),
+                    ('/bares',    'Bares Hifi', '/bares' in request.url.path),
+                    ('/bateas',   'Bateas',     '/bateas' in request.url.path),
+                    ('/wishlist', 'Wishlist',   '/wishlist' in request.url.path),
+                ] %}
+                {% for href, label, active in nav_links %}
+                <a href="{{ href }}" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all
+                    {% if active %}bg-cream-300 text-ink-800{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200{% endif %}">
+                    {{ label }}
+                </a>
+                {% endfor %}
+            </div>
+
+            <!-- Desktop: acciones derecha -->
+            <div class="hidden md:flex items-center gap-2 flex-shrink-0">
                 <button id="themeToggle" onclick="toggleTheme()"
-                    class="px-3 py-1.5 rounded-full text-sm transition-all text-ink-400 hover:text-ink-700 hover:bg-cream-200"
+                    class="p-2 rounded-full text-sm transition-all text-ink-400 hover:text-ink-700 hover:bg-cream-200"
                     title="Cambiar tema">🌙</button>
-                <a href="/" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all
-                    {% if request.url.path == '/' %}bg-cream-300 text-ink-800{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200{% endif %}">
-                    Coleccion
-                </a>
-                <a href="/concerts" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all
-                    {% if '/concerts' in request.url.path %}bg-cream-300 text-ink-800{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200{% endif %}">
-                    Recitales
-                </a>
-                <a href="/bares" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all
-                    {% if '/bares' in request.url.path %}bg-cream-300 text-ink-800{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200{% endif %}">
-                    Bares Hifi
-                </a>
-                <a href="/bateas" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all
-                    {% if '/bateas' in request.url.path %}bg-cream-300 text-ink-800{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200{% endif %}">
-                    Bateas
-                </a>
-                <a href="/perfil" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all
-                    {% if '/perfil' in request.url.path %}bg-cream-300 text-ink-800{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200{% endif %}">
-                    Perfil
-                </a>
+
                 {% if user %}
-                <a href="/sync/status" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all
-                    {% if '/sync' in request.url.path %}bg-cream-300 text-ink-800{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200{% endif %}">
-                    Sync
-                </a>
-                <a href="/usuarios" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all
-                    {% if '/usuarios' in request.url.path %}bg-cream-300 text-ink-800{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200{% endif %}">
-                    Usuarios
-                </a>
-                <a href="/admin/ia" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all
-                    {% if '/admin/ia' in request.url.path %}bg-cream-300 text-ink-800{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200{% endif %}">
-                    🤖 IA
-                </a>
-                <a href="/perfil/{{ user }}" class="ml-1 px-4 py-1.5 rounded-full text-sm font-medium transition-all
-                    {% if '/perfil' in request.url.path %}bg-cream-300 text-ink-800{% else %}text-ink-400 hover:text-ink-700 hover:bg-cream-200{% endif %}">
-                    Mi perfil
-                </a>
-                <a href="/logout" class="ml-2 px-4 py-1.5 rounded-full text-sm font-medium text-ink-300 hover:text-ink-600 hover:bg-cream-200 transition-all">
-                    Salir
-                </a>
+                <!-- Avatar dropdown -->
+                <div class="relative" id="userMenuWrap">
+                    <button onclick="toggleUserMenu()" id="userMenuBtn"
+                        class="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium text-ink-500 hover:bg-cream-200 transition-all border border-cream-200">
+                        <span class="text-base leading-none">👤</span>
+                        <span class="max-w-[80px] truncate">{{ user }}</span>
+                        <svg class="w-3.5 h-3.5 text-ink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+
+                    <div id="userMenu"
+                        class="hidden absolute right-0 mt-2 w-52 bg-cream-50 border border-cream-200 rounded-2xl shadow-lg py-2 z-50">
+                        <a href="/perfil/{{ user }}" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-ink-600 hover:bg-cream-100 transition-all
+                            {% if '/perfil' in request.url.path %}font-600 text-ink-800{% endif %}">
+                            🎧 Mi perfil
+                        </a>
+                        <a href="/sync/status" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-ink-600 hover:bg-cream-100 transition-all
+                            {% if '/sync' in request.url.path %}font-600 text-ink-800{% endif %}">
+                            🔄 Sync
+                        </a>
+                        <a href="/usuarios" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-ink-600 hover:bg-cream-100 transition-all
+                            {% if '/usuarios' in request.url.path %}font-600 text-ink-800{% endif %}">
+                            👥 Usuarios
+                        </a>
+                        <a href="/admin/ia" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-ink-600 hover:bg-cream-100 transition-all
+                            {% if '/admin/ia' in request.url.path %}font-600 text-ink-800{% endif %}">
+                            🤖 IA Admin
+                        </a>
+                        <div class="my-1.5 border-t border-cream-200"></div>
+                        <a href="/logout" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-ink-400 hover:bg-cream-100 hover:text-ink-700 transition-all">
+                            Salir
+                        </a>
+                    </div>
+                </div>
                 {% else %}
-                <a href="/login" class="ml-2 px-4 py-1.5 rounded-full text-sm font-medium bg-ink-800 text-cream-50 hover:bg-ink-700 transition-all">
+                <a href="/login" class="px-4 py-1.5 rounded-full text-sm font-medium bg-ink-800 text-cream-50 hover:bg-ink-700 transition-all">
                     Ingresar
                 </a>
                 {% endif %}
@@ -136,10 +152,10 @@
             <!-- Mobile: tema + hamburger -->
             <div class="flex md:hidden items-center gap-2">
                 <button id="themeToggleMobile" onclick="toggleTheme()"
-                    class="px-3 py-1.5 rounded-full text-sm transition-all text-ink-400 hover:bg-cream-200">🌙</button>
+                    class="p-2 rounded-full text-sm transition-all text-ink-400 hover:bg-cream-200">🌙</button>
                 <button id="menuToggle" onclick="toggleMenu()"
                     class="p-2 rounded-xl text-ink-500 hover:bg-cream-200 transition-all">
-                    <svg id="menuIcon" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
                     </svg>
                 </button>
@@ -147,46 +163,46 @@
         </div>
 
         <!-- Mobile menu -->
-        <div id="mobileMenu" class="hidden md:hidden border-t border-cream-200 bg-cream-50 px-6 py-4 space-y-1">
-            <a href="/" class="flex items-center px-4 py-2.5 rounded-xl text-sm font-medium transition-all
+        <div id="mobileMenu" class="hidden md:hidden border-t border-cream-200 bg-cream-50 px-4 py-3 space-y-1">
+            <a href="/" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all
                 {% if request.url.path == '/' %}bg-cream-200 text-ink-800{% else %}text-ink-500 hover:bg-cream-200{% endif %}">
                 🎵 Colección
             </a>
-            <a href="/concerts" class="flex items-center px-4 py-2.5 rounded-xl text-sm font-medium transition-all
+            <a href="/concerts" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all
                 {% if '/concerts' in request.url.path %}bg-cream-200 text-ink-800{% else %}text-ink-500 hover:bg-cream-200{% endif %}">
                 🎤 Recitales
             </a>
-            <a href="/bares" class="flex items-center px-4 py-2.5 rounded-xl text-sm font-medium transition-all
+            <a href="/bares" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all
                 {% if '/bares' in request.url.path %}bg-cream-200 text-ink-800{% else %}text-ink-500 hover:bg-cream-200{% endif %}">
                 🎶 Bares Hifi
             </a>
-            <a href="/bateas" class="flex items-center px-4 py-2.5 rounded-xl text-sm font-medium transition-all
+            <a href="/bateas" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all
                 {% if '/bateas' in request.url.path %}bg-cream-200 text-ink-800{% else %}text-ink-500 hover:bg-cream-200{% endif %}">
                 📦 Bateas
             </a>
-            <a href="/perfil" class="flex items-center px-4 py-2.5 rounded-xl text-sm font-medium transition-all
-                {% if '/perfil' in request.url.path %}bg-cream-200 text-ink-800{% else %}text-ink-500 hover:bg-cream-200{% endif %}">
-                👤 Perfil
+            <a href="/wishlist" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all
+                {% if '/wishlist' in request.url.path %}bg-cream-200 text-ink-800{% else %}text-ink-500 hover:bg-cream-200{% endif %}">
+                ✨ Wishlist
             </a>
             {% if user %}
-            <a href="/sync/status" class="flex items-center px-4 py-2.5 rounded-xl text-sm font-medium transition-all
-                {% if '/sync' in request.url.path %}bg-cream-200 text-ink-800{% else %}text-ink-500 hover:bg-cream-200{% endif %}">
-                🔄 Sync
-            </a>
-            <a href="/usuarios" class="flex items-center px-4 py-2.5 rounded-xl text-sm font-medium transition-all
-                {% if '/usuarios' in request.url.path %}bg-cream-200 text-ink-800{% else %}text-ink-500 hover:bg-cream-200{% endif %}">
-                👥 Usuarios
-            </a>
-            <a href="/admin/ia" class="flex items-center px-4 py-2.5 rounded-xl text-sm font-medium transition-all
-                {% if '/admin/ia' in request.url.path %}bg-cream-200 text-ink-800{% else %}text-ink-500 hover:bg-cream-200{% endif %}">
-                🤖 IA
-            </a>
-            <a href="/perfil/{{ user }}" class="flex items-center px-4 py-2.5 rounded-xl text-sm font-medium transition-all
-                {% if '/perfil' in request.url.path %}bg-cream-200 text-ink-800{% else %}text-ink-500 hover:bg-cream-200{% endif %}">
-                🎧 Mi perfil
-            </a>
-            <div class="pt-2 border-t border-cream-200">
-                <a href="/logout" class="flex items-center px-4 py-2.5 rounded-xl text-sm font-medium text-ink-400 hover:bg-cream-200 transition-all">
+            <div class="pt-1.5 mt-1.5 border-t border-cream-200 space-y-1">
+                <a href="/perfil/{{ user }}" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all
+                    {% if '/perfil' in request.url.path %}bg-cream-200 text-ink-800{% else %}text-ink-500 hover:bg-cream-200{% endif %}">
+                    🎧 Mi perfil
+                </a>
+                <a href="/sync/status" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all
+                    {% if '/sync' in request.url.path %}bg-cream-200 text-ink-800{% else %}text-ink-500 hover:bg-cream-200{% endif %}">
+                    🔄 Sync
+                </a>
+                <a href="/usuarios" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all
+                    {% if '/usuarios' in request.url.path %}bg-cream-200 text-ink-800{% else %}text-ink-500 hover:bg-cream-200{% endif %}">
+                    👥 Usuarios
+                </a>
+                <a href="/admin/ia" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all
+                    {% if '/admin/ia' in request.url.path %}bg-cream-200 text-ink-800{% else %}text-ink-500 hover:bg-cream-200{% endif %}">
+                    🤖 IA Admin
+                </a>
+                <a href="/logout" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-ink-400 hover:bg-cream-200 transition-all">
                     Salir
                 </a>
             </div>
@@ -323,16 +339,25 @@
         }
 
         function toggleMenu() {
-            const menu = document.getElementById('mobileMenu');
-            menu.classList.toggle('hidden');
+            document.getElementById('mobileMenu').classList.toggle('hidden');
         }
 
-        // Cerrar menu al hacer click fuera
+        function toggleUserMenu() {
+            document.getElementById('userMenu').classList.toggle('hidden');
+        }
+
         document.addEventListener('click', function(e) {
+            // Cierra mobile menu
             const menu   = document.getElementById('mobileMenu');
             const toggle = document.getElementById('menuToggle');
-            if (!menu.contains(e.target) && !toggle.contains(e.target)) {
+            if (menu && !menu.contains(e.target) && toggle && !toggle.contains(e.target)) {
                 menu.classList.add('hidden');
+            }
+            // Cierra user dropdown
+            const userMenu = document.getElementById('userMenu');
+            const userBtn  = document.getElementById('userMenuWrap');
+            if (userMenu && userBtn && !userBtn.contains(e.target)) {
+                userMenu.classList.add('hidden');
             }
         });
     </script>

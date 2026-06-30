@@ -26,6 +26,10 @@
         <p class="text-ink-400 text-sm mt-1">{{ total }} discos registrados</p>
     </div>
     <div class="flex items-center gap-2 flex-wrap">
+        <button onclick="openCollectionShareModal()"
+            class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-500 border border-cream-300 text-ink-600 hover:bg-cream-200 transition-all">
+            🔗 Compartir
+        </button>
         <button onclick="openRandomModal()"
             class="px-4 py-2 rounded-xl text-sm font-500 bg-amber-500 hover:bg-amber-400 text-white transition-all shadow-sm">
             🎲 Disco aleatorio
@@ -1426,4 +1430,51 @@ document.getElementById('newFormatNameGallery').addEventListener('keydown', e =>
     </div>
 </div>
 {% endif %}
+
+<!-- Modal compartir colección -->
+<div id="collectionShareModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+     onclick="document.getElementById('collectionShareModal').classList.add('hidden')">
+    <div class="bg-cream-50 rounded-2xl shadow-2xl w-full max-w-sm p-6" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="font-serif text-lg font-700 text-ink-800">🔗 Compartir colección</h3>
+            <button onclick="document.getElementById('collectionShareModal').classList.add('hidden')"
+                class="text-ink-400 hover:text-ink-700 text-xl leading-none">✕</button>
+        </div>
+        <div class="flex justify-center mb-5">
+            <div class="p-3 bg-white rounded-xl shadow-sm border border-cream-200">
+                <img id="collectionShareQR" src="" alt="QR" class="w-48 h-48"/>
+            </div>
+        </div>
+        <div class="flex gap-2 mb-2">
+            <input id="collectionShareUrl" type="text" readonly
+                class="flex-1 bg-cream-100 border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-600 focus:outline-none cursor-pointer truncate"
+                onclick="this.select()"/>
+            <button id="collectionCopyBtn" onclick="copyCollectionUrl()"
+                class="px-4 py-2 bg-ink-800 text-cream-50 rounded-xl text-sm font-500 hover:bg-ink-700 transition-all flex-shrink-0">
+                Copiar
+            </button>
+        </div>
+        <p class="text-xs text-ink-400 text-center">Cualquier persona con este link puede ver tu colección.</p>
+    </div>
+</div>
+
+<script>
+function openCollectionShareModal() {
+    const url = `${window.location.origin}/u/{{ user }}/coleccion`;
+    document.getElementById('collectionShareUrl').value = url;
+    document.getElementById('collectionShareQR').src =
+        `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(url)}&size=192x192&margin=10`;
+    document.getElementById('collectionShareModal').classList.remove('hidden');
+}
+async function copyCollectionUrl() {
+    await navigator.clipboard.writeText(document.getElementById('collectionShareUrl').value);
+    const btn = document.getElementById('collectionCopyBtn');
+    btn.textContent = '✓ Copiado';
+    btn.classList.replace('bg-ink-800', 'bg-emerald-600');
+    setTimeout(() => { btn.textContent = 'Copiar'; btn.classList.replace('bg-emerald-600', 'bg-ink-800'); }, 2000);
+}
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.getElementById('collectionShareModal').classList.add('hidden');
+});
+</script>
 {% endblock %}

@@ -1,0 +1,888 @@
+{% extends "base.html" %}
+{% block title %}Wishlist — Melomano{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<style>
+    .kanban-board   { display:flex; gap:1rem; overflow-x:auto; align-items:flex-start; padding-bottom:1.5rem; }
+    .kanban-col     { min-width:260px; max-width:260px; flex-shrink:0; }
+    .kanban-cards   { min-height:80px; }
+    .wish-card      { cursor:grab; user-select:none; }
+    .wish-card:active { cursor:grabbing; }
+    .sortable-ghost  { opacity:.35; }
+    .sortable-chosen { transform:rotate(1.5deg); box-shadow:0 8px 24px rgba(0,0,0,.18); }
+
+    /* Panel lateral */
+    #detailPanel { transition: transform .25s cubic-bezier(.4,0,.2,1); }
+    #detailPanel.open { transform: translateX(0); }
+
+    /* Chat en panel */
+    #wlChatMessages { scroll-behavior:smooth; }
+    .wl-msg-user { background:#252320; color:#fdfaf5; border-radius:12px 12px 4px 12px; }
+    .wl-msg-ai   { background:#f0e6d0; color:#252320; border-radius:12px 12px 12px 4px; }
+
+    /* Tracklist */
+    .track-row:hover { background:#f0e6d0; }
+
+    /* Spinner */
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .animate-spin { animation:spin .7s linear infinite; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% macro wishcard(item) %}
+<div class="wish-card bg-white border border-cream-200 rounded-xl p-2.5 mb-2 hover:shadow-md transition-all group"
+     data-id="{{ item.id }}" data-cat="{{ item.category_id or 'null' }}">
+    <div class="flex gap-2 cursor-pointer" onclick="openDetail({{ item.id }})">
+        {% if item.cover_url %}
+        <img src="{{ item.cover_url }}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0 shadow-sm" loading="lazy" />
+        {% else %}
+        <div class="w-10 h-10 rounded-lg bg-cream-200 flex-shrink-0 flex items-center justify-center text-ink-400">🎵</div>
+        {% endif %}
+        <div class="flex-1 min-w-0">
+            <p class="text-xs font-600 text-ink-800 truncate leading-tight">{{ item.title }}</p>
+            <p class="text-xs text-ink-500 truncate">{{ item.artist }}</p>
+            {% if item.year or item.format_type %}
+            <p class="text-xs text-ink-400">{{ [item.year|string if item.year, item.format_type]|select|join(' · ') }}</p>
+            {% endif %}
+        </div>
+    </div>
+    {% if item.notes %}
+    <p class="notes-display text-xs text-ink-400 italic mt-1.5 leading-snug">{{ item.notes }}</p>
+    {% endif %}
+    <div class="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button onclick="event.stopPropagation(); promoteItem({{ item.id }}, '{{ item.title|e }}')"
+            class="px-2 py-0.5 rounded-lg text-xs border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition-all">
+            + Colección
+        </button>
+        <button onclick="event.stopPropagation(); editNotes({{ item.id }}, `{{ item.notes|default('')|e }}`)"
+            class="px-2 py-0.5 rounded-lg text-xs border border-cream-300 text-ink-500 hover:bg-cream-200 transition-all">
+            📝
+        </button>
+        <button onclick="event.stopPropagation(); deleteItem({{ item.id }})"
+            class="ml-auto px-2 py-0.5 rounded-lg text-xs border border-red-200 text-red-400 hover:bg-red-50 transition-all">
+            ✕
+        </button>
+    </div>
+</div>
+{% endmacro %}
+
+<div class="max-w-full px-4 sm:px-6">
+
+<!-- ── Encabezado ─────────────────────────────────────── -->
+<div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+    <div>
+        <h1 class="font-serif text-3xl font-700 text-ink-800 tracking-tight">Wishlist</h1>
+        <p class="text-ink-400 text-sm mt-0.5">Discos que querés conseguir, organizados por prioridad</p>
+    </div>
+    <div class="flex items-center gap-2 flex-wrap">
+        <button onclick="openShareModal()"
+            class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-500 border border-cream-300 text-ink-600 hover:bg-cream-200 transition-all">
+            🔗 Compartir
+        </button>
+        <button onclick="openSearch()"
+            class="px-4 py-2 rounded-xl text-sm font-500 bg-ink-800 text-cream-50 hover:bg-ink-700 transition-all">
+            + Buscar disco
+        </button>
+        <button onclick="document.getElementById('newCatModal').classList.remove('hidden')"
+            class="px-4 py-2 rounded-xl text-sm font-500 border border-cream-300 text-ink-600 hover:bg-cream-200 transition-all">
+            + Nueva columna
+        </button>
+    </div>
+</div>
+
+<!-- ── Board ──────────────────────────────────────────── -->
+<div class="kanban-board" id="columnsBoard">
+
+    <div class="kanban-col" data-col-id="null">
+        <div class="rounded-2xl bg-cream-100 border border-cream-200 overflow-hidden">
+            <div class="px-3 py-2.5 flex items-center gap-2 border-b border-cream-200">
+                <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#aaa69b"></div>
+                <span class="text-sm font-600 text-ink-700 flex-1">Sin categoría</span>
+                <span class="text-xs text-ink-400 badge-count-null">{{ uncategorized|length }}</span>
+            </div>
+            <div class="p-2 kanban-cards" id="col-null">
+                {% for item in uncategorized %}{{ wishcard(item) }}{% endfor %}
+            </div>
+        </div>
+    </div>
+
+    {% for cat in categories %}
+    <div class="kanban-col" data-col-id="{{ cat.id }}">
+        <div class="rounded-2xl bg-cream-100 border border-cream-200 overflow-hidden">
+            <div class="px-3 py-2.5 flex items-center gap-2 border-b border-cream-200">
+                <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:{{ cat.color }}"></div>
+                <span class="text-sm font-600 text-ink-700 flex-1 truncate">{{ cat.name }}</span>
+                <span class="text-xs text-ink-400 badge-count-{{ cat.id }}">{{ cat.items|length }}</span>
+                <button onclick="openEditCat({{ cat.id }}, '{{ cat.name|e }}', '{{ cat.color }}')"
+                    class="text-ink-300 hover:text-ink-600 transition-all text-xs p-0.5">✎</button>
+                <button onclick="deleteCat({{ cat.id }})"
+                    class="text-ink-300 hover:text-red-400 transition-all text-xs p-0.5">✕</button>
+            </div>
+            <div class="p-2 kanban-cards" id="col-{{ cat.id }}">
+                {% for item in cat.items %}{{ wishcard(item) }}{% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+</div>
+</div>
+
+<!-- ── Fila "Todos" ──────────────────────────────────── -->
+{% set all_items = uncategorized + categories|map(attribute='items')|sum(start=[]) %}
+<div id="todos-section" class="mt-6 px-4 sm:px-6 {% if not all_items %}hidden{% endif %}">
+    <div class="rounded-2xl bg-cream-100 border border-cream-200 overflow-hidden">
+        <div class="px-4 py-2.5 flex items-center gap-2 border-b border-cream-200">
+            <span class="text-sm font-600 text-ink-700">Todos los discos</span>
+            <span id="todos-count" class="text-xs text-ink-400">{{ all_items|length }}</span>
+        </div>
+        <div id="todos-strip" class="flex gap-3 overflow-x-auto p-3 pb-4">
+            {% for item in all_items|sort(attribute='artist') %}
+            <div class="flex-shrink-0 w-24 cursor-pointer group" id="todo-item-{{ item.id }}" onclick="openDetail({{ item.id }})">
+                <div class="w-24 h-24 rounded-xl overflow-hidden bg-cream-200 shadow-sm mb-1.5 relative">
+                    {% if item.cover_url %}
+                    <img src="{{ item.cover_url }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" loading="lazy"/>
+                    {% else %}
+                    <div class="w-full h-full flex items-center justify-center text-2xl text-ink-400">🎵</div>
+                    {% endif %}
+                    {% if item.category_id %}
+                    {% for cat in categories %}{% if cat.id == item.category_id %}
+                    <div class="absolute top-1 right-1 w-2.5 h-2.5 rounded-full shadow" style="background:{{ cat.color }}"></div>
+                    {% endif %}{% endfor %}
+                    {% endif %}
+                </div>
+                <p class="text-xs font-600 text-ink-800 truncate leading-tight">{{ item.title }}</p>
+                <p class="text-xs text-ink-400 truncate">{{ item.artist }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- ── Panel lateral de detalle ───────────────────────── -->
+<div id="detailOverlay" class="hidden fixed inset-0 bg-black/40 z-40" onclick="closeDetail()"></div>
+<div id="detailPanel"
+     class="fixed top-0 right-0 h-full w-full max-w-lg bg-cream-50 z-50 shadow-2xl overflow-y-auto flex flex-col"
+     style="transform:translateX(100%)">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between p-4 border-b border-cream-200 sticky top-0 bg-cream-50 z-10">
+        <div class="flex items-center gap-3 min-w-0">
+            <div id="dpCover" class="w-12 h-12 rounded-xl overflow-hidden bg-cream-200 flex-shrink-0 shadow-sm flex items-center justify-center text-ink-400">🎵</div>
+            <div class="min-w-0">
+                <h2 id="dpTitle" class="font-serif text-lg font-700 text-ink-800 truncate"></h2>
+                <p id="dpArtist" class="text-sm text-ink-500 truncate"></p>
+            </div>
+        </div>
+        <button onclick="closeDetail()" class="text-ink-400 hover:text-ink-700 ml-2 flex-shrink-0 text-lg">✕</button>
+    </div>
+
+    <!-- Spinner de carga -->
+    <div id="dpLoader" class="flex items-center justify-center py-12 text-ink-400 text-sm">Cargando…</div>
+
+    <!-- Contenido principal -->
+    <div id="dpContent" class="hidden flex-1 flex flex-col">
+
+        <!-- Info básica + acciones -->
+        <div class="p-4 border-b border-cream-200">
+            <div id="dpMeta" class="flex flex-wrap gap-1.5 mb-3"></div>
+            <div class="flex gap-2 flex-wrap">
+                <button id="dpPromoteBtn"
+                    class="px-3 py-1.5 rounded-xl text-xs font-500 border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition-all">
+                    + Agregar a mi colección
+                </button>
+                <a id="dpDiscogsLink" href="#" target="_blank"
+                    class="px-3 py-1.5 rounded-xl text-xs font-500 border border-cream-300 text-ink-500 hover:bg-cream-200 transition-all hidden">
+                    Ver en Discogs ↗
+                </a>
+            </div>
+        </div>
+
+        <!-- Galería de imágenes -->
+        <div id="dpImages" class="hidden p-4 border-b border-cream-200">
+            <p class="text-xs font-600 text-ink-600 uppercase tracking-wider mb-2">Imágenes</p>
+            <div id="dpImagesGrid" class="flex gap-2 overflow-x-auto pb-1"></div>
+        </div>
+
+        <!-- Notas del release -->
+        <div id="dpNotes" class="hidden p-4 border-b border-cream-200">
+            <p class="text-xs font-600 text-ink-600 uppercase tracking-wider mb-1">Notas del release</p>
+            <p id="dpNotesText" class="text-sm text-ink-600 leading-relaxed"></p>
+        </div>
+
+        <!-- Tracklist -->
+        <div id="dpTracklist" class="hidden p-4 border-b border-cream-200">
+            <p class="text-xs font-600 text-ink-600 uppercase tracking-wider mb-2">Tracklist</p>
+            <div id="dpTracklistRows" class="space-y-0.5"></div>
+        </div>
+
+        <!-- Stats Discogs -->
+        <div id="dpStats" class="hidden p-4 border-b border-cream-200">
+            <p class="text-xs font-600 text-ink-600 uppercase tracking-wider mb-2">Discogs</p>
+            <div id="dpStatsGrid" class="grid grid-cols-2 gap-2"></div>
+        </div>
+
+        <!-- Chat IA -->
+        <div class="flex flex-col flex-1 p-4 min-h-0">
+            <p class="text-xs font-600 text-ink-600 uppercase tracking-wider mb-2">Chat IA</p>
+            <div id="wlChatMessages" class="flex-1 overflow-y-auto space-y-2 mb-3 max-h-64 min-h-[100px]">
+                <p class="text-xs text-ink-400 text-center">Preguntale al asistente sobre este disco…</p>
+            </div>
+            <div class="flex gap-2">
+                <input id="wlChatInput" type="text" placeholder="¿Qué querés saber?"
+                    class="flex-1 border border-cream-300 rounded-xl px-3 py-2 text-sm bg-cream-50 focus:outline-none focus:ring-2 focus:ring-cream-400"
+                    onkeydown="if(event.key==='Enter')sendWlChat()" />
+                <button onclick="sendWlChat()"
+                    class="px-3 py-2 rounded-xl text-sm bg-ink-800 text-cream-50 hover:bg-ink-700 transition-all font-500">
+                    →
+                </button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ── Modal: Buscar disco ────────────────────────────── -->
+<div id="searchModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+    <div class="bg-cream-50 rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col relative">
+        <!-- Overlay de carga sobre el modal -->
+        <div id="searchLoadingOverlay" class="hidden absolute inset-0 bg-cream-50/80 backdrop-blur-sm rounded-2xl z-10 flex flex-col items-center justify-center gap-2">
+            <div class="w-8 h-8 border-2 border-ink-800 border-t-transparent rounded-full animate-spin"></div>
+            <p class="text-sm text-ink-600 font-500">Agregando…</p>
+        </div>
+        <div class="flex items-center justify-between p-4 border-b border-cream-200">
+            <h2 class="font-serif text-lg font-700 text-ink-800">Buscar en Discogs</h2>
+            <button onclick="closeSearch()" class="text-ink-400 hover:text-ink-700 text-lg">✕</button>
+        </div>
+        <div class="p-4 border-b border-cream-200">
+            <div class="flex gap-2">
+                <input id="searchInput" type="text" placeholder="Artista, álbum..."
+                    class="flex-1 border border-cream-300 rounded-xl px-3 py-2 text-sm bg-cream-50 focus:outline-none focus:ring-2 focus:ring-cream-400"
+                    oninput="debounceSearch(this.value)" autocomplete="off" />
+                <select id="searchCatSelect"
+                    class="border border-cream-300 rounded-xl px-2 py-2 text-sm bg-cream-50 focus:outline-none text-ink-600">
+                    <option value="">Sin categoría</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}">{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <!-- Input URL de Discogs -->
+        <div class="px-4 py-2 border-b border-cream-200 flex gap-2">
+            <input id="discogsUrlInput" type="text" placeholder="O pegá un link de Discogs: discogs.com/release/12345"
+                class="flex-1 border border-cream-300 rounded-xl px-3 py-2 text-sm bg-cream-50 focus:outline-none focus:ring-2 focus:ring-cream-400"
+                onkeydown="if(event.key==='Enter')resolveUrl()" />
+            <button onclick="resolveUrl()"
+                class="px-3 py-2 rounded-xl text-sm font-500 bg-cream-200 text-ink-700 hover:bg-cream-300 transition-all whitespace-nowrap">
+                Resolver URL
+            </button>
+        </div>
+        <div id="urlPreview" class="hidden px-4 py-3 border-b border-cream-200 bg-cream-100"></div>
+        <div id="searchResults" class="overflow-y-auto flex-1 p-3 space-y-2">
+            <p class="text-sm text-ink-400 text-center py-6">Escribí para buscar…</p>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal: Nueva categoría ─────────────────────────── -->
+<div id="newCatModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+    <div class="bg-cream-50 rounded-2xl shadow-xl w-full max-w-sm p-6">
+        <h2 class="font-serif text-lg font-700 text-ink-800 mb-4">Nueva columna</h2>
+        <form action="/wishlist/categories" method="POST" class="space-y-3">
+            <input type="text" name="name" placeholder="Nombre (ej: Más deseado)" required
+                class="w-full border border-cream-300 rounded-xl px-3 py-2 text-sm bg-cream-50 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+            <div>
+                <label class="text-xs text-ink-500 mb-1.5 block">Color</label>
+                <div class="flex flex-wrap gap-2" id="colorPickerNew">
+                    {% for c in ['#e74c3c','#e67e22','#f1c40f','#2ecc71','#1abc9c','#3498db','#9b59b6','#c49268','#e91e63','#607d8b'] %}
+                    <label class="cursor-pointer">
+                        <input type="radio" name="color" value="{{ c }}" class="sr-only" {% if c == '#c49268' %}checked{% endif %} />
+                        <div class="w-7 h-7 rounded-full border-2 border-transparent hover:scale-110 transition-transform"
+                             style="background:{{ c }}" onclick="selectColor(this,'new')"></div>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="flex gap-2 pt-1">
+                <button type="button" onclick="document.getElementById('newCatModal').classList.add('hidden')"
+                    class="flex-1 px-4 py-2 rounded-xl text-sm border border-cream-300 text-ink-600 hover:bg-cream-200 transition-all">
+                    Cancelar
+                </button>
+                <button type="submit"
+                    class="flex-1 px-4 py-2 rounded-xl text-sm bg-ink-800 text-cream-50 hover:bg-ink-700 transition-all font-500">
+                    Crear
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ── Modal: Editar categoría ────────────────────────── -->
+<div id="editCatModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+    <div class="bg-cream-50 rounded-2xl shadow-xl w-full max-w-sm p-6">
+        <h2 class="font-serif text-lg font-700 text-ink-800 mb-4">Editar columna</h2>
+        <form id="editCatForm" method="POST" class="space-y-3">
+            <input type="text" name="name" id="editCatName" placeholder="Nombre" required
+                class="w-full border border-cream-300 rounded-xl px-3 py-2 text-sm bg-cream-50 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+            <div>
+                <label class="text-xs text-ink-500 mb-1.5 block">Color</label>
+                <div class="flex flex-wrap gap-2" id="colorPickerEdit">
+                    {% for c in ['#e74c3c','#e67e22','#f1c40f','#2ecc71','#1abc9c','#3498db','#9b59b6','#c49268','#e91e63','#607d8b'] %}
+                    <label class="cursor-pointer">
+                        <input type="radio" name="color" value="{{ c }}" class="sr-only color-edit-radio" />
+                        <div class="w-7 h-7 rounded-full border-2 border-transparent hover:scale-110 transition-transform"
+                             style="background:{{ c }}" onclick="selectColor(this,'edit')"></div>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="flex gap-2 pt-1">
+                <button type="button" onclick="document.getElementById('editCatModal').classList.add('hidden')"
+                    class="flex-1 px-4 py-2 rounded-xl text-sm border border-cream-300 text-ink-600 hover:bg-cream-200 transition-all">
+                    Cancelar
+                </button>
+                <button type="submit"
+                    class="flex-1 px-4 py-2 rounded-xl text-sm bg-ink-800 text-cream-50 hover:bg-ink-700 transition-all font-500">
+                    Guardar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ── Modal: Notas ───────────────────────────────────── -->
+<div id="notesModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+    <div class="bg-cream-50 rounded-2xl shadow-xl w-full max-w-sm p-6">
+        <h2 class="font-serif text-lg font-700 text-ink-800 mb-3">Notas</h2>
+        <textarea id="notesText" rows="3" placeholder="Anotaciones sobre este disco..."
+            class="w-full border border-cream-300 rounded-xl px-3 py-2 text-sm bg-cream-50 focus:outline-none focus:ring-2 focus:ring-cream-400 resize-none"></textarea>
+        <div class="flex gap-2 mt-3">
+            <button onclick="document.getElementById('notesModal').classList.add('hidden')"
+                class="flex-1 px-4 py-2 rounded-xl text-sm border border-cream-300 text-ink-600 hover:bg-cream-200 transition-all">
+                Cancelar
+            </button>
+            <button onclick="saveNotes()"
+                class="flex-1 px-4 py-2 rounded-xl text-sm bg-ink-800 text-cream-50 hover:bg-ink-700 transition-all font-500">
+                Guardar
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ── Estado global ─────────────────────────────────────
+let notesItemId   = null;
+let detailItemId  = null;
+let wlChatHistory = [];
+const colIds = ['null', ...{{ categories | map(attribute='id') | list | tojson }}];
+
+// ── Drag & drop ───────────────────────────────────────
+colIds.forEach(id => {
+    const el = document.getElementById(`col-${id}`);
+    if (!el) return;
+    Sortable.create(el, {
+        group:      'wishlist',
+        animation:  150,
+        ghostClass: 'sortable-ghost',
+        chosenClass:'sortable-chosen',
+        onEnd(evt) {
+            const itemId = evt.item.dataset.id;
+            const toCol  = evt.to.id.replace('col-', '');
+            const catId  = toCol === 'null' ? null : parseInt(toCol);
+            fetch(`/wishlist/items/${itemId}/move`, {
+                method:  'POST',
+                headers: {'Content-Type':'application/json'},
+                body:    JSON.stringify({ category_id: catId }),
+            });
+            updateCounts();
+        }
+    });
+});
+
+// ── Fila "Todos" helpers ─────────────────────────────
+function buildTodoCard(item) {
+    const wrap = document.createElement('div');
+    wrap.className = 'flex-shrink-0 w-24 cursor-pointer group';
+    wrap.id        = `todo-item-${item.id}`;
+    wrap.onclick   = () => openDetail(item.id);
+
+    const cover = item.cover_url
+        ? `<img src="${item.cover_url}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" loading="lazy"/>`
+        : `<div class="w-full h-full flex items-center justify-center text-2xl text-ink-400">🎵</div>`;
+
+    wrap.innerHTML = `
+        <div class="w-24 h-24 rounded-xl overflow-hidden bg-cream-200 shadow-sm mb-1.5 relative">
+            ${cover}
+        </div>
+        <p class="text-xs font-600 text-ink-800 truncate leading-tight"></p>
+        <p class="text-xs text-ink-400 truncate"></p>`;
+
+    wrap.querySelectorAll('p')[0].textContent = item.title;
+    wrap.querySelectorAll('p')[1].textContent = item.artist;
+    return wrap;
+}
+
+function addToTodos(item) {
+    const section = document.getElementById('todos-section');
+    const strip   = document.getElementById('todos-strip');
+    const counter = document.getElementById('todos-count');
+    section.classList.remove('hidden');
+    strip.appendChild(buildTodoCard(item));
+    counter.textContent = strip.children.length;
+}
+
+function removeFromTodos(itemId) {
+    const el      = document.getElementById(`todo-item-${itemId}`);
+    const counter = document.getElementById('todos-count');
+    const strip   = document.getElementById('todos-strip');
+    if (el) el.remove();
+    const remaining = strip ? strip.children.length : 0;
+    if (counter) counter.textContent = remaining;
+    if (remaining === 0) document.getElementById('todos-section').classList.add('hidden');
+}
+
+function updateCounts() {
+    colIds.forEach(id => {
+        const col   = document.getElementById(`col-${id}`);
+        const badge = document.querySelector(`.badge-count-${id}`);
+        if (col && badge) badge.textContent = col.querySelectorAll('.wish-card').length;
+    });
+}
+
+// ── Construir tarjeta desde JS (AJAX) ─────────────────
+function buildCard(item) {
+    const catId   = item.category_id || 'null';
+    const metaArr = [item.year, item.format_type].filter(Boolean);
+    const meta    = metaArr.length ? `<p class="text-xs text-ink-400">${metaArr.join(' · ')}</p>` : '';
+    const cover   = item.cover_url
+        ? `<img src="${item.cover_url}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0 shadow-sm" loading="lazy"/>`
+        : `<div class="w-10 h-10 rounded-lg bg-cream-200 flex-shrink-0 flex items-center justify-center text-ink-400">🎵</div>`;
+    const safeTitle = item.title.replace(/'/g, "\\'");
+
+    const div = document.createElement('div');
+    div.className = 'wish-card bg-white border border-cream-200 rounded-xl p-2.5 mb-2 hover:shadow-md transition-all group';
+    div.dataset.id  = item.id;
+    div.dataset.cat = catId;
+    div.innerHTML = `
+        <div class="flex gap-2 cursor-pointer" onclick="openDetail(${item.id})">${cover}
+            <div class="flex-1 min-w-0">
+                <p class="text-xs font-600 text-ink-800 truncate leading-tight">${item.title}</p>
+                <p class="text-xs text-ink-500 truncate">${item.artist}</p>
+                ${meta}
+            </div>
+        </div>
+        <div class="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button onclick="event.stopPropagation();promoteItem(${item.id},'${safeTitle}')"
+                class="px-2 py-0.5 rounded-lg text-xs border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition-all">+ Colección</button>
+            <button onclick="event.stopPropagation();editNotes(${item.id},'')"
+                class="px-2 py-0.5 rounded-lg text-xs border border-cream-300 text-ink-500 hover:bg-cream-200 transition-all">📝</button>
+            <button onclick="event.stopPropagation();deleteItem(${item.id})"
+                class="ml-auto px-2 py-0.5 rounded-lg text-xs border border-red-200 text-red-400 hover:bg-red-50 transition-all">✕</button>
+        </div>`;
+    return div;
+}
+
+// ── Búsqueda ──────────────────────────────────────────
+let searchTimer;
+function openSearch()  { document.getElementById('searchModal').classList.remove('hidden'); setTimeout(()=>document.getElementById('searchInput').focus(),100); }
+function closeSearch() { document.getElementById('searchModal').classList.add('hidden'); document.getElementById('searchInput').value=''; document.getElementById('searchResults').innerHTML='<p class="text-sm text-ink-400 text-center py-6">Escribí para buscar…</p>'; }
+
+function debounceSearch(q) {
+    clearTimeout(searchTimer);
+    if (q.length < 2) { document.getElementById('searchResults').innerHTML='<p class="text-sm text-ink-400 text-center py-6">Escribí para buscar…</p>'; return; }
+    document.getElementById('searchResults').innerHTML='<p class="text-sm text-ink-400 text-center py-6">Buscando…</p>';
+    searchTimer = setTimeout(()=>doSearch(q), 400);
+}
+
+async function doSearch(q) {
+    const resp = await fetch(`/wishlist/search?q=${encodeURIComponent(q)}`);
+    const data = await resp.json();
+    const box  = document.getElementById('searchResults');
+    if (!data.results?.length) { box.innerHTML='<p class="text-sm text-ink-400 text-center py-6">Sin resultados.</p>'; return; }
+    box.innerHTML = data.results.map(r => {
+        const enc = encodeURIComponent(JSON.stringify(r));
+        const cover = r.cover_url
+            ? `<img src="${r.cover_url}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0 shadow-sm" loading="lazy"/>`
+            : `<div class="w-10 h-10 rounded-lg bg-cream-200 flex-shrink-0 flex items-center justify-center text-ink-400">🎵</div>`;
+        return `<div class="flex gap-3 p-2 rounded-xl hover:bg-cream-100 transition-all items-center">
+            ${cover}
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-600 text-ink-800 truncate">${r.title}</p>
+                <p class="text-xs text-ink-500 truncate">${r.artist}${r.year ? ' · '+r.year : ''}</p>
+            </div>
+            <button onclick="addItem(decodeURIComponent('${enc}'), this)"
+                class="flex-shrink-0 px-3 py-1.5 rounded-xl text-xs bg-ink-800 text-cream-50 hover:bg-ink-700 transition-all font-500">
+                + Agregar
+            </button>
+        </div>`;
+    }).join('');
+}
+
+async function addItem(rStr, btn) {
+    if (btn.disabled) return;
+    btn.disabled    = true;
+    btn.textContent = '⏳';
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+
+    // Overlay de carga sobre el modal de búsqueda
+    const overlay = document.getElementById('searchLoadingOverlay');
+    overlay.classList.remove('hidden');
+
+    try {
+        const r      = JSON.parse(rStr);
+        const catId  = document.getElementById('searchCatSelect').value;
+        const form   = new FormData();
+        if (r.discogs_id)  form.append('discogs_id',  r.discogs_id);
+        form.append('title',  r.title);
+        form.append('artist', r.artist);
+        if (r.year)        form.append('year',        r.year);
+        if (r.genre)       form.append('genre',       r.genre);
+        if (r.label)       form.append('label',       r.label);
+        if (r.cover_url)   form.append('cover_url',   r.cover_url);
+        if (r.discogs_url) form.append('discogs_url', r.discogs_url);
+        if (r.format_type) form.append('format_type', r.format_type);
+        if (catId)         form.append('category_id', catId);
+
+        const resp = await fetch('/wishlist/items', { method:'POST', body:form });
+        const data = await resp.json();
+        if (!data.ok) throw new Error();
+
+        const colId = catId || 'null';
+        const col   = document.getElementById(`col-${colId}`);
+        if (col) { col.prepend(buildCard(data.item)); updateCounts(); }
+        addToTodos(data.item);
+
+        // Marcar como agregado en vez de restaurar el botón
+        btn.textContent = '✓ Agregado';
+        btn.classList.remove('bg-ink-800','hover:bg-ink-700');
+        btn.classList.add('bg-emerald-600','text-white');
+    } catch {
+        btn.disabled    = false;
+        btn.textContent = '+ Agregar';
+        btn.classList.remove('opacity-50','cursor-not-allowed');
+    } finally {
+        overlay.classList.add('hidden');
+    }
+}
+
+// ── Acciones de tarjeta ───────────────────────────────
+async function deleteItem(id) {
+    const card = document.querySelector(`[data-id="${id}"]`);
+    if (card?._deleting) return;
+    if (card) {
+        card._deleting = true;
+        card.style.opacity    = '0.4';
+        card.style.filter     = 'blur(2px)';
+        card.style.pointerEvents = 'none';
+    }
+    await fetch(`/wishlist/items/${id}`, { method:'DELETE' });
+    card?.remove();
+    removeFromTodos(id);
+    updateCounts();
+    if (detailItemId === id) closeDetail();
+}
+
+async function promoteItem(id, title) {
+    const card = document.querySelector(`[data-id="${id}"]`);
+    if (card?._promoting) return;
+    if (!confirm(`¿Agregar "${title}" a tu colección y quitarlo de la wishlist?`)) return;
+    if (card) {
+        card._promoting = true;
+        card.style.opacity    = '0.4';
+        card.style.filter     = 'blur(2px)';
+        card.style.pointerEvents = 'none';
+    }
+    const resp = await fetch(`/wishlist/items/${id}/promote`, { method:'POST' });
+    const data = await resp.json();
+    if (data.ok) {
+        card?.remove();
+        removeFromTodos(id);
+        updateCounts();
+        if (detailItemId === id) closeDetail();
+    } else if (card) {
+        card._promoting = false;
+        card.style.opacity = '';
+        card.style.filter  = '';
+        card.style.pointerEvents = '';
+    }
+}
+
+let notesTarget = null;
+function editNotes(id, current) {
+    notesItemId = id;
+    document.getElementById('notesText').value = current;
+    document.getElementById('notesModal').classList.remove('hidden');
+}
+async function saveNotes() {
+    const notes = document.getElementById('notesText').value;
+    await fetch(`/wishlist/items/${notesItemId}/notes`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ notes }),
+    });
+    document.getElementById('notesModal').classList.add('hidden');
+    // Actualizar el display de notas en la tarjeta sin recargar
+    const card = document.querySelector(`[data-id="${notesItemId}"]`);
+    if (card) {
+        let nd = card.querySelector('.notes-display');
+        if (notes) {
+            if (!nd) { nd = document.createElement('p'); nd.className='notes-display text-xs text-ink-400 italic mt-1.5 leading-snug'; card.querySelector('.flex.gap-2').after(nd); }
+            nd.textContent = notes;
+        } else if (nd) nd.remove();
+    }
+}
+
+// ── Categorías ────────────────────────────────────────
+async function deleteCat(id) {
+    if (!confirm('¿Eliminar esta columna? Los discos quedarán sin categoría.')) return;
+    await fetch(`/wishlist/categories/${id}`, { method:'DELETE' });
+    location.reload();
+}
+function openEditCat(id, name, color) {
+    document.getElementById('editCatForm').action = `/wishlist/categories/${id}/edit`;
+    document.getElementById('editCatName').value  = name;
+    document.querySelectorAll('.color-edit-radio').forEach(r => {
+        const isActive = r.value === color;
+        r.checked = isActive;
+        const dot = r.parentElement.querySelector('div');
+        dot.style.outline = isActive ? '2px solid #252320' : 'none';
+        dot.style.outlineOffset = isActive ? '2px' : '0';
+    });
+    document.getElementById('editCatModal').classList.remove('hidden');
+}
+function selectColor(el, mode) {
+    const prefix = mode === 'edit' ? '#colorPickerEdit' : '#colorPickerNew';
+    document.querySelectorAll(`${prefix} div`).forEach(d => { d.style.outline='none'; });
+    el.style.outline = '2px solid #252320';
+    el.style.outlineOffset = '2px';
+}
+document.querySelectorAll('#colorPickerNew input[type=radio]').forEach(r => {
+    if (r.checked) { r.parentElement.querySelector('div').style.outline='2px solid #252320'; r.parentElement.querySelector('div').style.outlineOffset='2px'; }
+});
+
+// ── Panel lateral de detalle ──────────────────────────
+async function openDetail(id) {
+    detailItemId  = id;
+    wlChatHistory = [];
+    document.getElementById('wlChatMessages').innerHTML = '<p class="text-xs text-ink-400 text-center">Preguntale al asistente sobre este disco…</p>';
+    document.getElementById('dpLoader').classList.remove('hidden');
+    document.getElementById('dpContent').classList.add('hidden');
+    document.getElementById('detailOverlay').classList.remove('hidden');
+    const panel = document.getElementById('detailPanel');
+    panel.style.transform = 'translateX(0)';
+
+    const resp = await fetch(`/wishlist/items/${id}/detail`);
+    const d    = await resp.json();
+
+    // Header
+    document.getElementById('dpTitle').textContent  = d.title;
+    document.getElementById('dpArtist').textContent = d.artist;
+    const coverEl = document.getElementById('dpCover');
+    if (d.cover_url) coverEl.innerHTML = `<img src="${d.cover_url}" class="w-full h-full object-cover"/>`;
+    else coverEl.innerHTML = '🎵';
+
+    // Meta chips
+    const metaEl = document.getElementById('dpMeta');
+    const chips  = [d.year, d.format_type, d.genre, d.label].filter(Boolean);
+    metaEl.innerHTML = chips.map(c => `<span class="px-2 py-0.5 rounded-full text-xs bg-cream-200 text-ink-600">${c}</span>`).join('');
+
+    // Acciones
+    const promoteBtn = document.getElementById('dpPromoteBtn');
+    promoteBtn.onclick = () => promoteItem(id, d.title);
+    const discogsLink = document.getElementById('dpDiscogsLink');
+    if (d.discogs_url) { discogsLink.href = d.discogs_url; discogsLink.classList.remove('hidden'); }
+    else discogsLink.classList.add('hidden');
+
+    // Imágenes extra de Discogs
+    const imagesWrap = document.getElementById('dpImages');
+    if (d.extra?.images?.length > 1) {
+        document.getElementById('dpImagesGrid').innerHTML = d.extra.images.slice(1,6).map(img =>
+            `<img src="${img.url}" class="h-20 w-20 object-cover rounded-lg flex-shrink-0 shadow-sm cursor-pointer hover:opacity-90" onclick="window.open('${img.url}','_blank')"/>`
+        ).join('');
+        imagesWrap.classList.remove('hidden');
+    } else imagesWrap.classList.add('hidden');
+
+    // Notas del release
+    const notesWrap = document.getElementById('dpNotes');
+    if (d.extra?.notes) { document.getElementById('dpNotesText').textContent = d.extra.notes; notesWrap.classList.remove('hidden'); }
+    else notesWrap.classList.add('hidden');
+
+    // Tracklist
+    const tlWrap = document.getElementById('dpTracklist');
+    if (d.extra?.tracklist?.length) {
+        document.getElementById('dpTracklistRows').innerHTML = d.extra.tracklist.map(t =>
+            `<div class="track-row flex items-center gap-3 px-2 py-1.5 rounded-lg transition-all">
+                <span class="text-xs text-ink-400 w-6 text-right flex-shrink-0">${t.pos}</span>
+                <span class="text-sm text-ink-700 flex-1 truncate">${t.title}</span>
+                ${t.duration ? `<span class="text-xs text-ink-400 flex-shrink-0">${t.duration}</span>` : ''}
+            </div>`
+        ).join('');
+        tlWrap.classList.remove('hidden');
+    } else tlWrap.classList.add('hidden');
+
+    // Stats
+    const statsWrap = document.getElementById('dpStats');
+    const statsGrid = document.getElementById('dpStatsGrid');
+    const statItems = [];
+    if (d.extra?.rating_avg)      statItems.push(['⭐ Rating', `${d.extra.rating_avg}/5 (${d.extra.rating_count || '?'} votos)`]);
+    if (d.extra?.community_have)  statItems.push(['📀 Lo tienen', d.extra.community_have]);
+    if (d.extra?.community_want)  statItems.push(['💜 Lo quieren', d.extra.community_want]);
+    if (d.extra?.lowest_price)    statItems.push(['💰 Precio min.', `$${d.extra.lowest_price}`]);
+    if (d.extra?.num_for_sale)    statItems.push(['🏪 En venta', d.extra.num_for_sale]);
+    if (statItems.length) {
+        statsGrid.innerHTML = statItems.map(([k,v]) =>
+            `<div class="bg-cream-100 rounded-xl p-2.5 text-center">
+                <p class="text-xs text-ink-400 mb-0.5">${k}</p>
+                <p class="text-sm font-600 text-ink-800">${v}</p>
+            </div>`
+        ).join('');
+        statsWrap.classList.remove('hidden');
+    } else statsWrap.classList.add('hidden');
+
+    document.getElementById('dpLoader').classList.add('hidden');
+    document.getElementById('dpContent').classList.remove('hidden');
+}
+
+function closeDetail() {
+    document.getElementById('detailPanel').style.transform = 'translateX(100%)';
+    document.getElementById('detailOverlay').classList.add('hidden');
+    detailItemId = null;
+}
+
+// ── Chat IA en panel ──────────────────────────────────
+async function sendWlChat() {
+    const input = document.getElementById('wlChatInput');
+    const text  = input.value.trim();
+    if (!text || !detailItemId) return;
+    input.value = '';
+
+    const box = document.getElementById('wlChatMessages');
+    // Limpiar placeholder
+    if (box.querySelector('p.text-center')) box.innerHTML = '';
+
+    wlChatHistory.push({ role:'user', content:text });
+    box.innerHTML += `<div class="wl-msg-user text-xs p-2.5 ml-8">${text}</div>`;
+
+    const aiDiv = document.createElement('div');
+    aiDiv.className = 'wl-msg-ai text-xs p-2.5 mr-8';
+    aiDiv.textContent = '…';
+    box.appendChild(aiDiv);
+    box.scrollTop = box.scrollHeight;
+
+    const resp = await fetch(`/api/chat/wishlist/${detailItemId}`, {
+        method:  'POST',
+        headers: {'Content-Type':'application/json'},
+        body:    JSON.stringify({ messages: wlChatHistory }),
+    });
+
+    const reader = resp.body.getReader();
+    const dec    = new TextDecoder();
+    let full     = '';
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        full += dec.decode(value);
+        aiDiv.textContent = full;
+        box.scrollTop = box.scrollHeight;
+    }
+    wlChatHistory.push({ role:'assistant', content:full });
+}
+
+// ── Resolver URL de Discogs ───────────────────────────
+async function resolveUrl() {
+    const input   = document.getElementById('discogsUrlInput');
+    const preview = document.getElementById('urlPreview');
+    const val     = input.value.trim();
+    if (!val) return;
+
+    preview.classList.remove('hidden');
+    preview.innerHTML = '<p class="text-sm text-ink-400">Buscando en Discogs…</p>';
+
+    const resp = await fetch(`/wishlist/resolve-discogs?url=${encodeURIComponent(val)}`);
+    const data = await resp.json();
+
+    if (data.error) {
+        preview.innerHTML = `<p class="text-sm text-red-500">${data.error}</p>`;
+        return;
+    }
+
+    const cover = data.cover_url
+        ? `<img src="${data.cover_url}" class="w-12 h-12 rounded-lg object-cover flex-shrink-0 shadow-sm"/>`
+        : `<div class="w-12 h-12 rounded-lg bg-cream-200 flex-shrink-0 flex items-center justify-center text-ink-400 text-xl">🎵</div>`;
+
+    preview.innerHTML = `
+        <div class="flex gap-3 items-center">
+            ${cover}
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-600 text-ink-800 truncate"></p>
+                <p class="text-xs text-ink-500 truncate"></p>
+            </div>
+            <button id="urlAddBtn"
+                class="flex-shrink-0 px-3 py-1.5 rounded-xl text-xs bg-ink-800 text-cream-50 hover:bg-ink-700 transition-all font-500">
+                + Agregar
+            </button>
+        </div>`;
+
+    preview.querySelector('.font-600').textContent  = data.title;
+    preview.querySelector('.text-xs').textContent   = data.artist + (data.year ? ' · ' + data.year : '');
+
+    const addBtn = document.getElementById('urlAddBtn');
+    const rStr   = JSON.stringify(data);
+    addBtn.addEventListener('click', () => addItem(rStr, addBtn));
+}
+
+// Escape para cerrar todo
+document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    closeDetail();
+    ['searchModal','newCatModal','editCatModal','notesModal','shareModal'].forEach(id =>
+        document.getElementById(id)?.classList.add('hidden')
+    );
+});
+
+// ── Compartir ─────────────────────────────────────────
+function openShareModal() {
+    const url = `${window.location.origin}/u/{{ user }}/wishlist`;
+    document.getElementById('shareUrl').value = url;
+    document.getElementById('shareQR').src =
+        `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(url)}&size=192x192&margin=10`;
+    document.getElementById('shareModal').classList.remove('hidden');
+}
+async function copyShareUrl() {
+    await navigator.clipboard.writeText(document.getElementById('shareUrl').value);
+    const btn = document.getElementById('copyShareBtn');
+    btn.textContent = '✓ Copiado';
+    btn.classList.replace('bg-ink-800','bg-emerald-600');
+    setTimeout(() => { btn.textContent = 'Copiar'; btn.classList.replace('bg-emerald-600','bg-ink-800'); }, 2000);
+}
+</script>
+
+<!-- Modal compartir wishlist -->
+<div id="shareModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+     onclick="document.getElementById('shareModal').classList.add('hidden')">
+    <div class="bg-cream-50 rounded-2xl shadow-2xl w-full max-w-sm p-6" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="font-serif text-lg font-700 text-ink-800">✨ Compartir wishlist</h3>
+            <button onclick="document.getElementById('shareModal').classList.add('hidden')" class="text-ink-400 hover:text-ink-700 text-xl leading-none">✕</button>
+        </div>
+        <div class="flex justify-center mb-5">
+            <div class="p-3 bg-white rounded-xl shadow-sm border border-cream-200">
+                <img id="shareQR" src="" alt="QR" class="w-48 h-48"/>
+            </div>
+        </div>
+        <div class="flex gap-2 mb-2">
+            <input id="shareUrl" type="text" readonly
+                class="flex-1 bg-cream-100 border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-600 focus:outline-none cursor-pointer truncate"
+                onclick="this.select()"/>
+            <button id="copyShareBtn" onclick="copyShareUrl()"
+                class="px-4 py-2 bg-ink-800 text-cream-50 rounded-xl text-sm font-500 hover:bg-ink-700 transition-all flex-shrink-0">
+                Copiar
+            </button>
+        </div>
+        <p class="text-xs text-ink-400 text-center">Cualquier persona con este link puede ver tu wishlist.</p>
+    </div>
+</div>
+{% endblock %}

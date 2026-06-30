@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Wishlist de {{ owner.display_name or owner.username }} — Melomano</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: { extend: {
+                colors: {
+                    cream: { 50:'#fdfaf5',100:'#f9f3e8',200:'#f0e6d0',300:'#e4ceac',400:'#d4b08a',500:'#c49268' },
+                    ink:   { 50:'#f5f4f2',100:'#e8e6e1',200:'#ccc9c1',300:'#aaa69b',400:'#888278',500:'#6b6560',600:'#514d49',700:'#3a3733',800:'#252320' },
+                },
+                fontFamily: { serif: ['"Playfair Display"','Georgia','serif'], sans: ['"Inter"','system-ui','sans-serif'] },
+            }}
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>body { font-family:'Inter',sans-serif; background-color:#f9f3e8; color:#252320; }</style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Header -->
+    <header class="border-b border-cream-200 bg-cream-50 sticky top-0 z-10">
+        <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+            <a href="/" class="flex items-center gap-2">
+                <span class="text-xl">🎵</span>
+                <span class="font-serif text-lg font-700 text-ink-800">Melomano</span>
+            </a>
+            <a href="/login" class="px-4 py-1.5 rounded-full text-sm font-medium bg-ink-800 text-cream-50 hover:bg-ink-700 transition-all">
+                Crear mi cuenta
+            </a>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-6 py-10">
+
+        <!-- Título -->
+        <div class="mb-10">
+            <p class="text-xs uppercase tracking-widest text-ink-400 mb-1">Wishlist compartida</p>
+            <h1 class="font-serif text-4xl font-700 text-ink-800 tracking-tight">
+                {{ owner.display_name or owner.username }}
+            </h1>
+            {% set total = uncategorized|length + categories|map(attribute='items')|sum(start=[])|list|length %}
+            <p class="text-ink-400 mt-2 text-sm">{{ total }} disco{% if total != 1 %}s{% endif %} en la lista de deseos</p>
+        </div>
+
+        {% if uncategorized %}
+        <!-- Sin categoría -->
+        <section class="mb-10">
+            <p class="text-xs uppercase tracking-widest text-ink-400 mb-4">Sin categoría</p>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                {% for item in uncategorized %}
+                <div class="group">
+                    <div class="aspect-square rounded-xl overflow-hidden bg-cream-200 mb-2 shadow-sm group-hover:shadow-md transition-all group-hover:scale-[1.02] relative">
+                        {% if item.cover_url %}
+                        <img src="{{ item.cover_url }}" alt="{{ item.title }}" class="w-full h-full object-cover" loading="lazy"/>
+                        {% else %}
+                        <div class="w-full h-full flex items-center justify-center text-4xl">🎵</div>
+                        {% endif %}
+                        {% if item.discogs_url %}
+                        <a href="{{ item.discogs_url }}" target="_blank" rel="noopener"
+                            class="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/50 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">↗</a>
+                        {% endif %}
+                    </div>
+                    <p class="text-xs font-600 text-ink-700 truncate leading-tight">{{ item.title }}</p>
+                    <p class="text-xs text-ink-400 truncate">{{ item.artist }}</p>
+                    {% if item.year %}<p class="text-xs text-ink-300">{{ item.year }}</p>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        {% for cat in categories %}
+        {% if cat.items %}
+        <section class="mb-10">
+            <div class="flex items-center gap-2 mb-4">
+                <div class="w-3 h-3 rounded-full flex-shrink-0" style="background:{{ cat.color }}"></div>
+                <p class="text-xs uppercase tracking-widest text-ink-400">{{ cat.name }}</p>
+                <span class="text-xs text-ink-300">({{ cat.items|length }})</span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                {% for item in cat.items %}
+                <div class="group">
+                    <div class="aspect-square rounded-xl overflow-hidden bg-cream-200 mb-2 shadow-sm group-hover:shadow-md transition-all group-hover:scale-[1.02] relative">
+                        {% if item.cover_url %}
+                        <img src="{{ item.cover_url }}" alt="{{ item.title }}" class="w-full h-full object-cover" loading="lazy"/>
+                        {% else %}
+                        <div class="w-full h-full flex items-center justify-center text-4xl">🎵</div>
+                        {% endif %}
+                        <div class="absolute top-1.5 left-1.5 w-2.5 h-2.5 rounded-full shadow" style="background:{{ cat.color }}"></div>
+                        {% if item.discogs_url %}
+                        <a href="{{ item.discogs_url }}" target="_blank" rel="noopener"
+                            class="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/50 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">↗</a>
+                        {% endif %}
+                    </div>
+                    <p class="text-xs font-600 text-ink-700 truncate leading-tight">{{ item.title }}</p>
+                    <p class="text-xs text-ink-400 truncate">{{ item.artist }}</p>
+                    {% if item.year %}<p class="text-xs text-ink-300">{{ item.year }}</p>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+        {% endfor %}
+
+        {% set total = uncategorized|length + categories|map(attribute='items')|sum(start=[])|list|length %}
+        {% if total == 0 %}
+        <div class="text-center py-24 text-ink-300">
+            <p class="text-5xl mb-4">✨</p>
+            <p class="text-lg">Esta wishlist todavía está vacía.</p>
+        </div>
+        {% endif %}
+
+    </main>
+
+    <footer class="text-center py-8 text-ink-300 text-xs border-t border-cream-200 mt-12">
+        Generado con <a href="/login" class="underline hover:text-ink-500">Melomano</a> &mdash; Tu universo musical
+    </footer>
+
+</body>
+</html>
