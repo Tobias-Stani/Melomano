@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Lista privada — Melomano</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    <style>body { font-family:'Inter',sans-serif; background-color:#f9f3e8; color:#252320; }</style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+    <p class="text-5xl mb-6">🔒</p>
+    <h1 class="font-serif text-3xl font-700 text-gray-800 mb-3">Lista privada</h1>
+    <p class="text-gray-500 mb-8 max-w-xs">
+        La {{ tipo }} de <strong>{{ owner.display_name or owner.username }}</strong> es privada por ahora.
+    </p>
+    <a href="/" class="px-5 py-2.5 rounded-xl text-sm font-500 bg-gray-800 text-white hover:bg-gray-700 transition-all">
+        Ir a Melomano
+    </a>
+</body>
+</html>

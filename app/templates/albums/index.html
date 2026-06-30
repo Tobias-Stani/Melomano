@@ -26,10 +26,18 @@
         <p class="text-ink-400 text-sm mt-1">{{ total }} discos registrados</p>
     </div>
     <div class="flex items-center gap-2 flex-wrap">
-        <button onclick="openCollectionShareModal()"
-            class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-500 border border-cream-300 text-ink-600 hover:bg-cream-200 transition-all">
-            🔗 Compartir
-        </button>
+        <div class="flex items-center gap-1 border border-cream-300 rounded-xl overflow-hidden">
+            <button onclick="openCollectionShareModal()"
+                class="flex items-center gap-1.5 px-3 py-2 text-sm font-500 text-ink-600 hover:bg-cream-200 transition-all">
+                🔗 Compartir
+            </button>
+            <button id="col-privacy-btn" onclick="toggleCollectionPrivacy(this)"
+                data-public="{{ 'true' if user_obj.collection_public else 'false' }}"
+                title="{{ 'Pública — click para privatizar' if user_obj.collection_public else 'Privada — click para hacer pública' }}"
+                class="px-3 py-2 text-sm border-l border-cream-300 hover:bg-cream-200 transition-all flex items-center justify-center w-10">
+                {{ '🌐' if user_obj.collection_public else '🔒' }}
+            </button>
+        </div>
         <button onclick="openRandomModal()"
             class="px-4 py-2 rounded-xl text-sm font-500 bg-amber-500 hover:bg-amber-400 text-white transition-all shadow-sm">
             🎲 Disco aleatorio
@@ -1459,6 +1467,32 @@ document.getElementById('newFormatNameGallery').addEventListener('keydown', e =>
 </div>
 
 <script>
+async function toggleCollectionPrivacy(btn) {
+    if (btn.disabled) return;
+    const isPublic = btn.dataset.public === 'true';
+    const next     = !isPublic;
+
+    btn.disabled  = true;
+    btn.innerHTML = '<svg class="w-4 h-4 animate-spin text-ink-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>';
+
+    try {
+        const resp = await fetch('/perfil/privacy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ field: 'collection_public', value: next }),
+        });
+        const data = await resp.json();
+        if (!data.ok) throw new Error();
+        btn.dataset.public = next ? 'true' : 'false';
+        btn.innerHTML      = next ? '🌐' : '🔒';
+        btn.title          = next ? 'Pública — click para privatizar' : 'Privada — click para hacer pública';
+    } catch {
+        btn.innerHTML = isPublic ? '🌐' : '🔒';
+    } finally {
+        btn.disabled = false;
+    }
+}
+
 function openCollectionShareModal() {
     const url = `${window.location.origin}/u/{{ user }}/coleccion`;
     document.getElementById('collectionShareUrl').value = url;

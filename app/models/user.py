@@ -14,6 +14,8 @@ class User(Base):
     avatar               = Column(Text, nullable=True)
     password_hash        = Column(Text, nullable=False)
     is_admin             = Column(Boolean, default=False)
+    collection_public    = Column(Boolean, default=True, nullable=False)
+    wishlist_public      = Column(Boolean, default=True, nullable=False)
     last_listened_id     = Column(Integer, ForeignKey("albums.id"), nullable=True)
     created_at           = Column(DateTime(timezone=True), server_default=func.now())
 

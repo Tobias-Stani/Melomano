@@ -23,6 +23,10 @@ def _get_user_or_404(username: str, db: Session) -> User:
 @router.get("/{username}/coleccion", response_class=HTMLResponse)
 async def public_collection(username: str, request: Request, db: Session = Depends(get_db)):
     user = _get_user_or_404(username, db)
+    if not user.collection_public:
+        return templates.TemplateResponse("public/privado.html", {
+            "request": request, "owner": user, "tipo": "colección",
+        }, status_code=403)
     albums = (
         db.query(Album)
         .filter(Album.user_id == user.id, Album.deleted_at == None, Album.owned == True)
@@ -39,6 +43,10 @@ async def public_collection(username: str, request: Request, db: Session = Depen
 @router.get("/{username}/wishlist", response_class=HTMLResponse)
 async def public_wishlist(username: str, request: Request, db: Session = Depends(get_db)):
     user = _get_user_or_404(username, db)
+    if not user.wishlist_public:
+        return templates.TemplateResponse("public/privado.html", {
+            "request": request, "owner": user, "tipo": "wishlist",
+        }, status_code=403)
     categories = (
         db.query(WishlistCategory)
         .filter(WishlistCategory.user_id == user.id)

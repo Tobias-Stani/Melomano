@@ -31,15 +31,59 @@
 
         <!-- Acciones (solo si es el propio perfil) -->
         {% if is_own %}
-        <div class="flex gap-2 flex-shrink-0 flex-wrap">
-            <a href="/perfil/editar"
-                class="px-4 py-2 rounded-xl text-sm font-500 border border-cream-300 text-ink-600 hover:bg-cream-200 transition-all">
-                Editar perfil
-            </a>
-            <a href="/perfil/seleccionar-favoritos"
-                class="px-4 py-2 rounded-xl text-sm font-500 border border-cream-300 text-ink-600 hover:bg-cream-200 transition-all">
-                Editar favoritos
-            </a>
+        <div class="flex flex-col gap-3 flex-shrink-0">
+            <div class="flex gap-2 flex-wrap">
+                <a href="/perfil/editar"
+                    class="px-4 py-2 rounded-xl text-sm font-500 border border-cream-300 text-ink-600 hover:bg-cream-200 transition-all">
+                    Editar perfil
+                </a>
+                <a href="/perfil/seleccionar-favoritos"
+                    class="px-4 py-2 rounded-xl text-sm font-500 border border-cream-300 text-ink-600 hover:bg-cream-200 transition-all">
+                    Editar favoritos
+                </a>
+            </div>
+
+            <!-- Compartir + privacidad -->
+            <div class="flex flex-col gap-2 bg-cream-100 border border-cream-200 rounded-xl p-3">
+                <!-- Colección -->
+                <div class="flex items-center justify-between gap-4">
+                    <div class="flex items-center gap-2">
+                        <button onclick="openShareModal('coleccion')"
+                            class="text-xs text-ink-500 hover:text-ink-800 underline transition-all">
+                            🔗 Colección
+                        </button>
+                        <span id="col-status" class="text-xs {% if profile.collection_public %}text-emerald-600{% else %}text-ink-400{% endif %}">
+                            {% if profile.collection_public %}Pública{% else %}Privada{% endif %}
+                        </span>
+                    </div>
+                    <button id="col-toggle" onclick="togglePrivacy('collection_public', this)"
+                        data-value="{{ 'true' if profile.collection_public else 'false' }}"
+                        class="relative w-10 h-5 rounded-full transition-colors duration-200 focus:outline-none
+                            {% if profile.collection_public %}bg-emerald-500{% else %}bg-cream-300{% endif %}">
+                        <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200
+                            {% if profile.collection_public %}translate-x-5{% else %}translate-x-0{% endif %}"></span>
+                    </button>
+                </div>
+                <!-- Wishlist -->
+                <div class="flex items-center justify-between gap-4">
+                    <div class="flex items-center gap-2">
+                        <button onclick="openShareModal('wishlist')"
+                            class="text-xs text-ink-500 hover:text-ink-800 underline transition-all">
+                            ✨ Wishlist
+                        </button>
+                        <span id="wl-status" class="text-xs {% if profile.wishlist_public %}text-emerald-600{% else %}text-ink-400{% endif %}">
+                            {% if profile.wishlist_public %}Pública{% else %}Privada{% endif %}
+                        </span>
+                    </div>
+                    <button id="wl-toggle" onclick="togglePrivacy('wishlist_public', this)"
+                        data-value="{{ 'true' if profile.wishlist_public else 'false' }}"
+                        class="relative w-10 h-5 rounded-full transition-colors duration-200 focus:outline-none
+                            {% if profile.wishlist_public %}bg-emerald-500{% else %}bg-cream-300{% endif %}">
+                        <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200
+                            {% if profile.wishlist_public %}translate-x-5{% else %}translate-x-0{% endif %}"></span>
+                    </button>
+                </div>
+            </div>
         </div>
         {% endif %}
     </div>
@@ -302,5 +346,83 @@ Sortable.create(document.getElementById('albumsGrid'), {
     },
 });
 </script>
+{% endif %}
+
+{% if is_own %}
+<script>
+function openShareModal(type) {
+    const url   = `${window.location.origin}/u/{{ profile.username }}/${type}`;
+    const title = type === 'coleccion' ? '🔗 Compartir colección' : '✨ Compartir wishlist';
+    document.getElementById('shareTitle').textContent = title;
+    document.getElementById('shareUrl').value = url;
+    document.getElementById('shareQR').src =
+        `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(url)}&size=192x192&margin=10`;
+    document.getElementById('shareModal').classList.remove('hidden');
+}
+
+async function copyShareUrl() {
+    await navigator.clipboard.writeText(document.getElementById('shareUrl').value);
+    const btn = document.getElementById('copyShareBtn');
+    btn.textContent = '✓ Copiado';
+    btn.classList.replace('bg-ink-800', 'bg-emerald-600');
+    setTimeout(() => { btn.textContent = 'Copiar'; btn.classList.replace('bg-emerald-600', 'bg-ink-800'); }, 2000);
+}
+
+async function togglePrivacy(field, btn) {
+    const current = btn.dataset.value === 'true';
+    const next    = !current;
+    const resp    = await fetch('/perfil/privacy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ field, value: next }),
+    });
+    if (!(await resp.json()).ok) return;
+
+    btn.dataset.value = next ? 'true' : 'false';
+    const dot = btn.querySelector('span');
+    if (next) {
+        btn.classList.replace('bg-cream-300', 'bg-emerald-500');
+        dot.classList.replace('translate-x-0', 'translate-x-5');
+    } else {
+        btn.classList.replace('bg-emerald-500', 'bg-cream-300');
+        dot.classList.replace('translate-x-5', 'translate-x-0');
+    }
+    const statusId = field === 'collection_public' ? 'col-status' : 'wl-status';
+    const status   = document.getElementById(statusId);
+    status.textContent = next ? 'Pública' : 'Privada';
+    status.className   = `text-xs ${next ? 'text-emerald-600' : 'text-ink-400'}`;
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.getElementById('shareModal')?.classList.add('hidden');
+});
+</script>
+
+<!-- Modal compartir -->
+<div id="shareModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+     onclick="document.getElementById('shareModal').classList.add('hidden')">
+    <div class="bg-cream-50 rounded-2xl shadow-2xl w-full max-w-sm p-6" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between mb-5">
+            <h3 id="shareTitle" class="font-serif text-lg font-700 text-ink-800"></h3>
+            <button onclick="document.getElementById('shareModal').classList.add('hidden')"
+                class="text-ink-400 hover:text-ink-700 text-xl leading-none">✕</button>
+        </div>
+        <div class="flex justify-center mb-5">
+            <div class="p-3 bg-white rounded-xl shadow-sm border border-cream-200">
+                <img id="shareQR" src="" alt="QR" class="w-48 h-48"/>
+            </div>
+        </div>
+        <div class="flex gap-2 mb-2">
+            <input id="shareUrl" type="text" readonly
+                class="flex-1 bg-cream-100 border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-600 focus:outline-none cursor-pointer truncate"
+                onclick="this.select()"/>
+            <button id="copyShareBtn" onclick="copyShareUrl()"
+                class="px-4 py-2 bg-ink-800 text-cream-50 rounded-xl text-sm font-500 hover:bg-ink-700 transition-all flex-shrink-0">
+                Copiar
+            </button>
+        </div>
+        <p class="text-xs text-ink-400 text-center">Si la lista está en privado, el link no funcionará.</p>
+    </div>
+</div>
 {% endif %}
 {% endblock %}

@@ -245,3 +245,18 @@ async def perfil_reorder(request: Request, db: Session = Depends(get_db)):
             rows_by_id[item_id].slot = slot
     db.commit()
     return JSONResponse({"ok": True})
+
+
+@router.post("/perfil/privacy")
+async def toggle_privacy(request: Request, db: Session = Depends(get_db)):
+    username = get_current_user(request)
+    if not username:
+        return JSONResponse({"error": "no autorizado"}, status_code=401)
+    user_obj = _get_user_obj(db, username)
+    body  = await request.json()
+    field = body.get("field")
+    if field not in ("collection_public", "wishlist_public"):
+        return JSONResponse({"error": "campo invalido"}, status_code=400)
+    setattr(user_obj, field, body.get("value", True))
+    db.commit()
+    return JSONResponse({"ok": True, "value": getattr(user_obj, field)})
