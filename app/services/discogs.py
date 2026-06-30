@@ -184,6 +184,8 @@ async def fetch_release_details(discogs_id: int) -> dict | None:
         "rating_count": rating.get("count"),
         "community_have": community.get("have"),
         "community_want": community.get("want"),
+        "lowest_price":   data.get("lowest_price"),
+        "num_for_sale":   data.get("num_for_sale"),
     }
 
 

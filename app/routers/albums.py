@@ -1,6 +1,7 @@
 import json
 import hashlib
 import random
+import asyncio
 from datetime import datetime, timezone, date
 from fastapi import APIRouter, Depends, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
@@ -150,6 +151,13 @@ async def album_detail(album_id: int, request: Request, db: Session = Depends(ge
     ).first() is not None
     format_types = db.query(FormatType).order_by(FormatType.name).all()
     discogs_extra = await fetch_release_details(album.discogs_id) if album.discogs_id else None
+    if discogs_extra:
+        album.discogs_lowest_price    = discogs_extra.get("lowest_price")
+        album.discogs_num_for_sale    = discogs_extra.get("num_for_sale")
+        album.discogs_have            = discogs_extra.get("community_have")
+        album.discogs_want            = discogs_extra.get("community_want")
+        album.discogs_extra_synced_at = datetime.now(timezone.utc)
+        db.commit()
     user_obj = db.query(User).filter(User.username == user).first() if user else None
     fav_track = db.query(FavoriteTrack).filter(
         FavoriteTrack.album_id == album_id,
@@ -261,9 +269,36 @@ async def trigger_sync(request: Request, db: Session = Depends(get_db)):
     if not username:
         return RedirectResponse(url="/login", status_code=302)
     user_obj = _get_user_obj(username, db)
-    uid = user_obj.id if user_obj else None
-    log = await sync_collection(db, user_id=uid)
+    if not user_obj or not user_obj.is_admin:
+        return RedirectResponse(url="/", status_code=303)
+    log = await sync_collection(db, user_id=user_obj.id)
     return RedirectResponse(url=f"/sync/status?log_id={log.id}", status_code=303)
+
+
+@router.post("/sync/discogs-valores")
+async def trigger_sync_valores(request: Request, db: Session = Depends(get_db)):
+    """Rellena precio/cantidad en venta/community de Discogs para los discos del usuario."""
+    username = get_current_user(request)
+    if not username:
+        return RedirectResponse(url="/login", status_code=302)
+    user_obj = _get_user_obj(username, db)
+    if not user_obj:
+        return RedirectResponse(url="/login", status_code=302)
+
+    albums = db.query(Album).filter(
+        Album.user_id == user_obj.id, Album.deleted_at == None, Album.discogs_id != None,
+    ).all()
+    for album in albums:
+        extra = await fetch_release_details(album.discogs_id)
+        if extra:
+            album.discogs_lowest_price    = extra.get("lowest_price")
+            album.discogs_num_for_sale    = extra.get("num_for_sale")
+            album.discogs_have            = extra.get("community_have")
+            album.discogs_want            = extra.get("community_want")
+            album.discogs_extra_synced_at = datetime.now(timezone.utc)
+            db.commit()
+        await asyncio.sleep(1)  # Discogs: max 60 req/min
+    return RedirectResponse(url="/", status_code=303)
 
 
 @router.get("/sync/status", response_class=HTMLResponse)

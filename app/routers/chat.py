@@ -22,7 +22,11 @@ BASE_SYSTEM_PROMPT = (
     "los datos de esta app — no hables de otros temas (programación, noticias, etc.). "
     "Usá ÚNICAMENTE los datos reales que te paso abajo para responder sobre la colección "
     "del usuario; si no tenés el dato, decilo en vez de inventarlo. No podés modificar, "
-    "eliminar ni crear nada — solo responder preguntas con la información dada."
+    "eliminar ni crear nada — solo responder preguntas con la información dada. "
+    "El precio más bajo, las copias en venta y los usuarios que tienen/quieren cada disco "
+    "vienen de Discogs y solo están disponibles si el usuario ya los sincronizó con el botón "
+    "'💰 Actualizar valores' de la galería; si un disco dice 'sin datos de mercado todavía', "
+    "avisale que puede usar ese botón para obtenerlos."
 )
 
 MAX_HISTORY = 12  # mensajes (sin contar el system prompt)
@@ -77,6 +81,30 @@ def _build_user_context(db: Session, user_obj: User) -> str:
         lines.append(f"Discos sin batea asignada: {unassigned}")
     else:
         lines.append("El usuario no tiene bateas creadas todavía.")
+
+    # Detalle disco por disco: fecha de alta y datos de mercado de Discogs (si fueron cacheados)
+    all_albums = (
+        db.query(Album)
+        .filter(Album.user_id == user_obj.id, Album.deleted_at == None)
+        .order_by(Album.artist)
+        .all()
+    )
+    if all_albums:
+        lines.append("\nListado completo de discos (fecha de alta a la colección y datos de mercado de Discogs si se conocen):")
+        for a in all_albums:
+            added = a.created_at.strftime("%Y-%m-%d") if a.created_at else "fecha desconocida"
+            parts = [f'- "{a.title}" - {a.artist} (agregado: {added})']
+            if a.discogs_lowest_price is not None:
+                parts.append(f"precio más bajo en Discogs: ${a.discogs_lowest_price}")
+            if a.discogs_num_for_sale is not None:
+                parts.append(f"copias en venta: {a.discogs_num_for_sale}")
+            if a.discogs_have is not None:
+                parts.append(f"usuarios que lo tienen: {a.discogs_have}")
+            if a.discogs_want is not None:
+                parts.append(f"usuarios que lo quieren: {a.discogs_want}")
+            if len(parts) == 1:
+                parts.append("sin datos de mercado todavía (no sincronizado)")
+            lines.append(", ".join(parts))
 
     return "\n".join(lines)
 

@@ -17,7 +17,9 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/bateas)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/)",
       "Bash(docker run *)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:8000/)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:8000/)",
+      "Bash(sudo apt-get install -y build-essential bubblewrap)",
+      "Bash(dpkg -l build-essential bubblewrap)"
     ]
   }
 }

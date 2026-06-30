@@ -48,3 +48,10 @@ class Album(Base):
     updated_at      = Column(DateTime(timezone=True), onupdate=func.now())
     synced_at       = Column(DateTime(timezone=True), nullable=True)  # ultima sync con discogs
     deleted_at      = Column(DateTime(timezone=True), nullable=True)
+
+    # Mercado Discogs (cacheado para no pegarle a la API en cada mensaje del chat)
+    discogs_lowest_price = Column(Float, nullable=True)
+    discogs_num_for_sale = Column(Integer, nullable=True)
+    discogs_have         = Column(Integer, nullable=True)
+    discogs_want         = Column(Integer, nullable=True)
+    discogs_extra_synced_at = Column(DateTime(timezone=True), nullable=True)
