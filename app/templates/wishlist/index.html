@@ -512,7 +512,7 @@ async function doSearch(q) {
     const box  = document.getElementById('searchResults');
     if (!data.results?.length) { box.innerHTML='<p class="text-sm text-ink-400 text-center py-6">Sin resultados.</p>'; return; }
     box.innerHTML = data.results.map(r => {
-        const enc = encodeURIComponent(JSON.stringify(r));
+        const enc = encodeURIComponent(JSON.stringify(r)).replace(/'/g, '%27');
         const cover = r.cover_url
             ? `<img src="${r.cover_url}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0 shadow-sm" loading="lazy"/>`
             : `<div class="w-10 h-10 rounded-lg bg-cream-200 flex-shrink-0 flex items-center justify-center text-ink-400">🎵</div>`;
