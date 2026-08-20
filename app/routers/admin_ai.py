@@ -8,6 +8,7 @@ from app.models.user import User
 from app.auth import get_current_user
 from app.services.ai_chat import get_rate_limit_status, AIChatError, AI_MODEL, AI_BASE_URL
 
+
 router    = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
