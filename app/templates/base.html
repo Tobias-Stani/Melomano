@@ -91,6 +91,7 @@
                     ('/bares',    'Bares Hifi', '/bares' in request.url.path),
                     ('/bateas',   'Bateas',     '/bateas' in request.url.path),
                     ('/wishlist', 'Wishlist',   '/wishlist' in request.url.path),
+                    ('/setlist',  'Setlist',    '/setlist'  in request.url.path),
                 ] %}
                 {% for href, label, active in nav_links %}
                 <a href="{{ href }}" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all
@@ -184,6 +185,10 @@
                 {% if '/wishlist' in request.url.path %}bg-cream-200 text-ink-800{% else %}text-ink-500 hover:bg-cream-200{% endif %}">
                 ✨ Wishlist
             </a>
+            <a href="/setlist" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all
+                {% if '/setlist' in request.url.path %}bg-cream-200 text-ink-800{% else %}text-ink-500 hover:bg-cream-200{% endif %}">
+                🎛️ Setlist
+            </a>
             {% if user %}
             <div class="pt-1.5 mt-1.5 border-t border-cream-200 space-y-1">
                 <a href="/perfil/{{ user }}" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all
@@ -233,8 +238,14 @@
 
     <div id="chatPanel" class="hidden fixed bottom-24 right-5 w-80 max-w-[90vw] h-96 bg-cream-50 border border-cream-200 rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden">
         <div class="flex items-center justify-between px-4 py-3 bg-ink-800 text-cream-50">
-            <p class="font-serif font-600 text-sm">🎵 Asistente Melomano</p>
-            <button onclick="toggleChat()" class="text-cream-50/70 hover:text-cream-50 text-lg leading-none">&times;</button>
+            <p id="chatAssistantLabel" class="font-serif font-600 text-sm">🎵 Asistente Melomano</p>
+            <div class="flex items-center gap-2">
+                <button onclick="toggleAssistant()" title="Alternar entre el asistente de Melomano e Ito"
+                    class="text-cream-50/70 hover:text-cream-50 text-xs border border-cream-50/30 rounded-full px-2 py-0.5">
+                    ⇄ probar Ito
+                </button>
+                <button onclick="toggleChat()" class="text-cream-50/70 hover:text-cream-50 text-lg leading-none">&times;</button>
+            </div>
         </div>
         <div id="chatMessages" class="flex-1 overflow-y-auto px-3 py-3 space-y-2 text-sm"></div>
         <form id="chatForm" class="flex items-center gap-2 p-2 border-t border-cream-200 bg-white">
@@ -246,9 +257,15 @@
 
     <script>
         let chatHistory = [];
+        let useIto = false;
 
         function toggleChat() {
             document.getElementById('chatPanel').classList.toggle('hidden');
+        }
+
+        function toggleAssistant() {
+            useIto = !useIto;
+            document.getElementById('chatAssistantLabel').textContent = useIto ? '🤖 Ito (prueba)' : '🎵 Asistente Melomano';
         }
 
         function _addBubble(text, role) {
@@ -274,6 +291,22 @@
 
             const box    = document.getElementById('chatMessages');
             const bubble = _addBubble('', 'assistant');
+
+            if (useIto) {
+                try {
+                    const resp = await fetch('/api/chat/ito', {
+                        method:  'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body:    JSON.stringify({ question: text }),
+                    });
+                    const data = await resp.json();
+                    bubble.textContent = resp.ok ? data.answer : (data.error || 'Hubo un error, probá de nuevo en un rato.');
+                } catch (err) {
+                    bubble.textContent = 'No se pudo conectar con Ito.';
+                }
+                return;
+            }
+
             let fullText = '';
             try {
                 const resp = await fetch('/api/chat', {

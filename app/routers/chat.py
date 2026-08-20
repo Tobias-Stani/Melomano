@@ -1,3 +1,8 @@
+import asyncio
+import os
+import uuid
+
+import httpx
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import func
@@ -15,6 +20,11 @@ from app.services.ai_chat import chat_completion_stream, AIChatError
 from app.services.discogs import fetch_release_details
 
 router = APIRouter(prefix="/api/chat")
+
+# Ito (Iteguito AI) — segundo asistente en prueba, alternable desde el chat.
+# Server-side only: ITO_API_KEY nunca debe llegar al navegador.
+ITO_GATEWAY_URL = os.getenv("ITO_GATEWAY_URL", "")
+ITO_API_KEY = os.getenv("ITO_API_KEY", "")
 
 BASE_SYSTEM_PROMPT = (
     "Sos el asistente de Melomano, una app personal de colección de discos, "
@@ -134,6 +144,38 @@ async def chat(request: Request, db: Session = Depends(get_db)):
     return StreamingResponse(gen(), media_type="text/plain")
 
 
+@router.post("/ito")
+async def chat_ito(request: Request):
+    """Proxies one question to the Ito (Iteguito AI) gateway, server-side —
+    keeps ITO_API_KEY out of the browser. Test-only, alongside the existing
+    Groq-based assistant above; does not replace it."""
+    if not get_current_user(request):
+        return JSONResponse({"error": "no autorizado"}, status_code=401)
+    if not ITO_API_KEY or not ITO_GATEWAY_URL:
+        return JSONResponse({"error": "Ito no está configurado (falta ITO_API_KEY/ITO_GATEWAY_URL)"}, status_code=503)
+
+    body = await request.json()
+    question = (body.get("question") or "").strip()
+    if not question:
+        raise HTTPException(400, "question requerida")
+
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                f"{ITO_GATEWAY_URL}/query",
+                headers={"X-API-Key": ITO_API_KEY},
+                json={"question": question, "request_id": str(uuid.uuid4())},
+            )
+    except httpx.HTTPError:
+        return JSONResponse({"error": "No se pudo conectar con Ito."}, status_code=502)
+
+    if resp.status_code >= 400:
+        return JSONResponse({"error": "Ito no pudo responder esa pregunta."}, status_code=502)
+
+    data = resp.json()
+    return {"answer": data["answer"], "source": data.get("source")}
+
+
 # ── Chat acotado a un disco puntual ───────────────────────
 
 def _build_album_context(album: Album, extra: dict | None, crate: Crate | None) -> str:
@@ -204,6 +246,100 @@ async def chat_album(album_id: int, request: Request, db: Session = Depends(get_
     body     = await request.json()
     history  = body.get("messages", [])[-MAX_HISTORY:]
     messages = [{"role": "system", "content": system_prompt}] + history
+
+    async def gen():
+        try:
+            async for chunk in chat_completion_stream(messages):
+                yield chunk
+        except AIChatError as e:
+            yield f"[[error]] {e}"
+
+    return StreamingResponse(gen(), media_type="text/plain")
+
+
+@router.post("/setlist")
+async def chat_setlist(request: Request, db: Session = Depends(get_db)):
+    username = get_current_user(request)
+    if not username:
+        return JSONResponse({"error": "no autorizado"}, status_code=401)
+
+    body             = await request.json()
+    album_ids        = body.get("album_ids", [])
+    duration_minutes = int(body.get("duration_minutes", 120))
+    num_tracks       = int(body.get("num_tracks", 20))
+    user_context     = (body.get("user_context") or "").strip()
+    if not album_ids:
+        return JSONResponse({"error": "seleccioná al menos un disco"}, status_code=400)
+
+    user_obj = db.query(User).filter(User.username == username).first()
+    albums   = (
+        db.query(Album)
+        .filter(Album.id.in_(album_ids), Album.user_id == user_obj.id, Album.deleted_at == None)
+        .all()
+    )
+    if not albums:
+        return JSONResponse({"error": "no se encontraron los discos"}, status_code=404)
+
+    extras = await asyncio.gather(*[
+        fetch_release_details(a.discogs_id) if a.discogs_id else asyncio.sleep(0, result=None)
+        for a in albums
+    ])
+
+    context_lines = []
+    for album, extra in zip(albums, extras):
+        context_lines.append(f"\n== {album.title} — {album.artist} ==")
+        if album.genre: context_lines.append(f"  Género: {album.genre}")
+        if album.year:  context_lines.append(f"  Año: {album.year}")
+        if extra and extra.get("tracklist"):
+            tracks = []
+            for t in extra["tracklist"]:
+                if not t.get("title"): continue
+                entry = f"{t.get('pos','').strip()} {t['title']}"
+                if t.get("duration"): entry += f" ({t['duration']})"
+                tracks.append(entry.strip())
+            if tracks:
+                context_lines.append("  Tracklist:")
+                for tr in tracks:
+                    context_lines.append(f"    - {tr}")
+        else:
+            context_lines.append("  (sin tracklist en Discogs)")
+
+    context = "\n".join(context_lines)
+    duration_h   = duration_minutes // 60
+    duration_min = duration_minutes % 60
+    duration_str = f"{duration_h}h{f' {duration_min}min' if duration_min else ''}"
+
+    context_line = f"\nAmbiente/contexto del set: {user_context}" if user_context else ""
+
+    system_prompt = (
+        f"Sos un DJ con años de experiencia curando sets. Tu trabajo es elegir y ordenar canciones para que el set FLUYA, "
+        f"no solo listar tracks al azar.{context_line}\n\n"
+        f"Armá un setlist de exactamente {num_tracks} temas para una sesión de {duration_str}.\n\n"
+        "REGLAS DE CURACIÓN (son obligatorias, no opcionales):\n"
+        "- Elegí SOLO los temas que funcionan juntos en términos de tempo, energía y mood. Si un tema rompe el flujo, no lo pongas.\n"
+        "- No uses todos los temas disponibles. Seleccioná los mejores para ese arco de energía específico.\n"
+        "- El arco debe ser claro: calentamiento suave → build progresivo → pico → descenso → cierre memorable.\n"
+        "- Las transiciones deben ser técnicas y realistas: blend en el drop, loop del intro, cut en 4 tiempos, fade con filtro, silencio dramático, etc.\n"
+        "- Pensá en compatibilidad tonal y rítmica entre temas consecutivos.\n"
+        "- Si el usuario especificó un ambiente, priorizá tracks que encajen con ese mood aunque no sean los más 'obvios'.\n\n"
+        "Respondé en español. NO uses markdown (sin asteriscos, sin #, sin **). Solo texto plano con mayúsculas para secciones.\n\n"
+        "Formato exacto:\n"
+        "VIBE DEL SET\n"
+        "[2 líneas: qué sensación genera este set y para qué momento/público]\n\n"
+        "SETLIST\n"
+        "1. Titulo del tema — Artista (Album)\n"
+        "   → [transición técnica al siguiente: qué hacés, cuántos beats, qué elemento usás]\n"
+        "2. ...\n"
+        "(el último tema no lleva transición)\n\n"
+        "NOTA DEL DJ\n"
+        "[2-3 líneas explicando la lógica de curación: por qué ese orden, qué momentos clave hay en el set]\n\n"
+        f"Discos y tracklists disponibles (elegí solo lo que sirve):\n{context}"
+    )
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user",   "content": "Armá el setlist con estos discos."},
+    ]
 
     async def gen():
         try:

@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+{% block title %}Crear Setlist — Melomano{% endblock %}
+
+{% block head %}
+<style>
+    .album-card { cursor:pointer; transition:all .15s; user-select:none; }
+    .album-card.selected { outline:3px solid #252320; outline-offset:2px; }
+    .album-card.selected .sel-badge { opacity:1; }
+    .album-card.hidden-filter { display:none; }
+    .sel-badge { opacity:0; transition:opacity .15s; }
+
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .spin { animation:spin .7s linear infinite; }
+
+    #setlistOutput { white-space:pre-wrap; font-family:ui-monospace,'Cascadia Code',monospace; font-size:.8rem; line-height:1.8; }
+
+    .section-header  { color:#c9a96e; font-size:.65rem; letter-spacing:.15em; text-transform:uppercase; font-weight:700; margin-top:1.2rem; margin-bottom:.3rem; }
+    .track-line      { color:#f5f0e8; font-weight:500; }
+    .transition-line { color:#7a7060; font-style:italic; padding-left:1rem; }
+    .vibe-line       { color:#b8a88a; font-style:italic; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 sm:px-6 pb-16">
+
+<div class="mb-6">
+    <h1 class="font-serif text-3xl font-700 text-ink-800 tracking-tight">🎛️ Crear Setlist</h1>
+    <p class="text-ink-400 text-sm mt-1">Elegí los discos, configurá el set y la IA te arma el orden con transiciones.</p>
+</div>
+
+{% if not albums %}
+<div class="text-center py-20 text-ink-400">
+    <p class="text-5xl mb-4">🎵</p>
+    <p class="font-serif text-xl">Todavía no tenés discos en tu colección.</p>
+    <a href="/" class="mt-4 inline-block text-sm text-ink-600 underline">Agregar discos</a>
+</div>
+{% else %}
+
+<!-- Configuración del set -->
+<div class="bg-cream-100 border border-cream-200 rounded-2xl p-4 mb-6 flex flex-wrap gap-4 items-end">
+    <div>
+        <label class="text-xs font-600 text-ink-600 uppercase tracking-wider block mb-1.5">Duración del set</label>
+        <select id="durationSelect" class="border border-cream-300 rounded-xl px-3 py-2 text-sm bg-cream-50 focus:outline-none text-ink-700">
+            <option value="60">1 hora</option>
+            <option value="90">1 hora 30 min</option>
+            <option value="120" selected>2 horas</option>
+            <option value="180">3 horas</option>
+            <option value="240">4 horas</option>
+        </select>
+    </div>
+    <div>
+        <label class="text-xs font-600 text-ink-600 uppercase tracking-wider block mb-1.5">Cantidad de temas</label>
+        <select id="tracksSelect" class="border border-cream-300 rounded-xl px-3 py-2 text-sm bg-cream-50 focus:outline-none text-ink-700">
+            <option value="10">10 temas</option>
+            <option value="15">15 temas</option>
+            <option value="20" selected>20 temas</option>
+            <option value="25">25 temas</option>
+            <option value="30">30 temas</option>
+        </select>
+    </div>
+    <div>
+        <label class="text-xs font-600 text-ink-600 uppercase tracking-wider block mb-1.5">Filtrar por formato</label>
+        <select id="crateFilter" onchange="filterAlbums()" class="border border-cream-300 rounded-xl px-3 py-2 text-sm bg-cream-50 focus:outline-none text-ink-700">
+            <option value="">Todos los formatos</option>
+            {% set formats = albums | map(attribute='format_type') | select | unique | sort %}
+            {% for fmt in formats %}
+            <option value="{{ fmt }}">{{ fmt }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="flex-1 min-w-48">
+        <label class="text-xs font-600 text-ink-600 uppercase tracking-wider block mb-1.5">Buscar disco</label>
+        <input id="searchInput" type="text" placeholder="Artista o título..."
+            oninput="filterAlbums()"
+            class="w-full border border-cream-300 rounded-xl px-3 py-2 text-sm bg-cream-50 focus:outline-none focus:ring-2 focus:ring-cream-400 text-ink-700"/>
+    </div>
+    <div class="w-full">
+        <label class="text-xs font-600 text-ink-600 uppercase tracking-wider block mb-1.5">Contexto del set <span class="normal-case font-400 text-ink-400">(opcional)</span></label>
+        <textarea id="contextInput" rows="2"
+            placeholder="Ej: noche entre amigos tranquila con vino y charla, algo que no tape la conversación..."
+            class="w-full border border-cream-300 rounded-xl px-3 py-2 text-sm bg-cream-50 focus:outline-none focus:ring-2 focus:ring-cream-400 text-ink-700 resize-none"></textarea>
+    </div>
+</div>
+
+<!-- Barra de acción sticky -->
+<div class="sticky top-0 z-20 py-3 mb-5 flex items-center gap-3 rounded-xl px-4" style="background:#1a1a1a">
+    <div class="flex-1">
+        <span id="selCount" class="text-sm font-600" style="color:#f0ece4">0 discos seleccionados</span>
+        <span class="text-sm ml-1.5" style="color:#7a7060">— elegí al menos 2</span>
+    </div>
+    <button onclick="clearSelection()" id="clearBtn"
+        class="hidden px-3 py-1.5 rounded-xl text-xs transition-all"
+        style="border:1px solid #444; color:#aaa; background:transparent">
+        Limpiar
+    </button>
+    <button id="genBtn" onclick="generateSetlist()" disabled
+        class="px-5 py-2 rounded-xl text-sm font-600 transition-all"
+        style="background:#c9a96e; color:#111; opacity:.4; cursor:not-allowed">
+        🎛️ Generar Set
+    </button>
+</div>
+
+<!-- Grid de discos -->
+<div id="albumGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-10">
+{% for album in albums %}
+<div class="album-card rounded-xl overflow-hidden bg-white border border-cream-200 shadow-sm hover:shadow-md relative"
+     data-id="{{ album.id }}"
+     data-search="{{ (album.title ~ ' ' ~ album.artist)|lower }}"
+     data-crate="{{ album.format_type or '' }}"
+     onclick="toggleAlbum(this)">
+    <div class="sel-badge absolute top-2 right-2 w-6 h-6 bg-ink-800 rounded-full flex items-center justify-center z-10">
+        <svg class="w-3.5 h-3.5 text-cream-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+        </svg>
+    </div>
+    <div class="aspect-square bg-cream-200 overflow-hidden">
+        {% if album.cover_url %}
+        <img src="{{ album.cover_url }}" class="w-full h-full object-cover" loading="lazy"/>
+        {% elif album.cover_b64 %}
+        <img src="{{ album.cover_b64 }}" class="w-full h-full object-cover" loading="lazy"/>
+        {% else %}
+        <div class="w-full h-full flex items-center justify-center text-3xl text-ink-300">🎵</div>
+        {% endif %}
+    </div>
+    <div class="p-2">
+        <p class="text-xs font-600 text-ink-800 truncate leading-tight">{{ album.title }}</p>
+        <p class="text-xs text-ink-400 truncate">{{ album.artist }}</p>
+        {% if album.format_type %}<p class="text-xs text-ink-300 mt-0.5">{{ album.format_type }}</p>{% endif %}
+    </div>
+</div>
+{% endfor %}
+</div>
+
+<!-- Output -->
+<div id="outputSection" class="hidden space-y-6">
+
+    <!-- Setlist -->
+    <div>
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="font-serif text-xl font-700 text-ink-800">Tu Setlist</h2>
+            <button onclick="copySetlist()" id="copyBtn"
+                class="px-3 py-1.5 rounded-xl text-xs border border-cream-300 text-ink-600 hover:bg-cream-200 transition-all">
+                📋 Copiar texto
+            </button>
+        </div>
+        <div class="rounded-2xl p-6" style="background:#111111">
+            <div id="outputLoader" class="flex items-center gap-2 text-sm mb-3" style="color:#a09080">
+                <div class="w-4 h-4 border-2 border-t-transparent rounded-full spin" style="border-color:#a09080; border-top-color:transparent"></div>
+                Armando el set…
+            </div>
+            <div id="setlistOutput" class="min-h-[80px]" style="color:#f0ece4"></div>
+        </div>
+    </div>
+
+
+</div>
+
+{% endif %}
+</div>
+
+<script>
+const selected = new Set();
+
+function toggleAlbum(card) {
+    const id = card.dataset.id;
+    if (selected.has(id)) { selected.delete(id); card.classList.remove('selected'); }
+    else                   { selected.add(id);    card.classList.add('selected'); }
+    updateBar();
+}
+
+function updateBar() {
+    const n = selected.size;
+    document.getElementById('selCount').textContent = `${n} disco${n !== 1 ? 's' : ''} seleccionado${n !== 1 ? 's' : ''}`;
+    const btn = document.getElementById('genBtn');
+    btn.disabled = n < 2;
+    btn.style.opacity = n < 2 ? '.4' : '1';
+    btn.style.cursor  = n < 2 ? 'not-allowed' : 'pointer';
+    document.getElementById('clearBtn').classList.toggle('hidden', n === 0);
+}
+
+function clearSelection() {
+    selected.clear();
+    document.querySelectorAll('.album-card.selected').forEach(c => c.classList.remove('selected'));
+    updateBar();
+}
+
+function filterAlbums() {
+    const term  = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+    const crate = document.getElementById('crateFilter').value;
+    document.querySelectorAll('.album-card').forEach(card => {
+        const textOk  = !term  || card.dataset.search.includes(term);
+        const crateOk = !crate || card.dataset.crate === crate;  // ponytail: reuses same attr, just changed meaning to format_type
+        card.classList.toggle('hidden-filter', !(textOk && crateOk));
+    });
+}
+
+// Renderiza el texto plano con colores por tipo de línea
+function renderSetlist(text) {
+    const out = document.getElementById('setlistOutput');
+    const lines = text.split('\n');
+    out.innerHTML = lines.map(line => {
+        const t = line.trimStart();
+        if (/^(VIBE DEL SET|SETLIST|NOTA DEL DJ)$/i.test(t))
+            return `<div class="section-header">${t}</div>`;
+        if (/^→/.test(t))
+            return `<div class="transition-line">${escHtml(line)}</div>`;
+        if (/^\d+\./.test(t))
+            return `<div class="track-line">${escHtml(line)}</div>`;
+        if (t === '')
+            return `<div style="height:.5rem"></div>`;
+        // VIBE y NOTA lines de contenido
+        return `<div class="vibe-line">${escHtml(line)}</div>`;
+    }).join('');
+}
+
+function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function generateSetlist() {
+    const section  = document.getElementById('outputSection');
+    const output   = document.getElementById('setlistOutput');
+    const loader   = document.getElementById('outputLoader');
+    const btn      = document.getElementById('genBtn');
+    const duration = parseInt(document.getElementById('durationSelect').value);
+    const tracks   = parseInt(document.getElementById('tracksSelect').value);
+    const context  = document.getElementById('contextInput').value.trim();
+    const ids      = [...selected].map(Number);
+
+    section.classList.remove('hidden');
+    output.innerHTML = '';
+    loader.classList.remove('hidden');
+    btn.disabled = true;
+    btn.classList.add('opacity-40','cursor-not-allowed');
+    section.scrollIntoView({ behavior:'smooth', block:'start' });
+
+    // Lanzar ambas peticiones en paralelo
+    await streamSetlist(ids, duration, tracks, context, output, loader);
+
+    btn.disabled = false;
+    btn.classList.remove('opacity-40','cursor-not-allowed');
+}
+
+async function streamSetlist(ids, duration, tracks, userContext, output, loader) {
+    let full = '';
+    try {
+        const resp = await fetch('/api/chat/setlist', {
+            method:  'POST',
+            headers: {'Content-Type':'application/json'},
+            body:    JSON.stringify({ album_ids: ids, duration_minutes: duration, num_tracks: tracks, user_context: userContext }),
+        });
+        const reader = resp.body.getReader();
+        const dec    = new TextDecoder();
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            full += dec.decode(value);
+            renderSetlist(full);
+        }
+    } catch {
+        output.textContent = 'Error al generar el setlist. Intentá de nuevo.';
+    } finally {
+        loader.classList.add('hidden');
+        window._setlistText = full;
+    }
+}
+
+
+function escUrl(u) { return u.replace(/"/g, '%22'); }
+
+function copySetlist() {
+    const text = window._setlistText || '';
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✓ Copiado';
+    setTimeout(() => btn.textContent = '📋 Copiar texto', 2000);
+}
+</script>
+{% endblock %}
