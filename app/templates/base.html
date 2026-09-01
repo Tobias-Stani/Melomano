@@ -256,6 +256,45 @@
     </div>
 
     <script>
+        function _escapeHtml(s) {
+            return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        function _mdInline(s) {
+            s = s.replace(/`([^`]+)`/g, '<code class="px-1 bg-cream-200 rounded text-[0.85em]">$1</code>');
+            s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
+            return s;
+        }
+
+        function mdToHtml(raw) {
+            const lines = _escapeHtml(raw).split('\n');
+            let html = '', listType = null;
+            const closeList = () => {
+                if (listType) { html += listType === 'ul' ? '</ul>' : '</ol>'; listType = null; }
+            };
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed) { closeList(); continue; }
+                let m;
+                if ((m = trimmed.match(/^(#{1,3})\s+(.*)/))) {
+                    closeList();
+                    html += `<p class="font-700 mt-1 mb-0.5">${_mdInline(m[2])}</p>`;
+                } else if ((m = trimmed.match(/^[-*]\s+(.*)/))) {
+                    if (listType !== 'ul') { closeList(); html += '<ul class="list-disc pl-4 space-y-0.5">'; listType = 'ul'; }
+                    html += `<li>${_mdInline(m[1])}</li>`;
+                } else if ((m = trimmed.match(/^\d+\.\s+(.*)/))) {
+                    if (listType !== 'ol') { closeList(); html += '<ol class="list-decimal pl-4 space-y-0.5">'; listType = 'ol'; }
+                    html += `<li>${_mdInline(m[1])}</li>`;
+                } else {
+                    closeList();
+                    html += `<p class="mb-1 last:mb-0">${_mdInline(trimmed)}</p>`;
+                }
+            }
+            closeList();
+            return html;
+        }
+
         let chatHistory = [];
         let useIto = false;
 
@@ -300,7 +339,8 @@
                         body:    JSON.stringify({ question: text }),
                     });
                     const data = await resp.json();
-                    bubble.textContent = resp.ok ? data.answer : (data.error || 'Hubo un error, probá de nuevo en un rato.');
+                    if (resp.ok) bubble.innerHTML = mdToHtml(data.answer);
+                    else bubble.textContent = data.error || 'Hubo un error, probá de nuevo en un rato.';
                 } catch (err) {
                     bubble.textContent = 'No se pudo conectar con Ito.';
                 }
@@ -324,7 +364,7 @@
                     const { done, value } = await reader.read();
                     if (done) break;
                     fullText += decoder.decode(value, { stream: true });
-                    bubble.textContent = fullText;
+                    bubble.innerHTML = mdToHtml(fullText);
                     box.scrollTop = box.scrollHeight;
                 }
                 chatHistory.push({ role: 'assistant', content: fullText });

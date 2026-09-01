@@ -14,6 +14,7 @@ from app.models import format_type    # noqa: F401
 from app.models import favorite_track  # noqa: F401
 from app.models import crate as crate_model  # noqa: F401
 from app.models import wishlist_category, wishlist_item  # noqa: F401
+from app.models import saved_setlist  # noqa: F401
 from app.models.user import User
 from app.models.featured import FeaturedItem
 from app.auth import hash_password
