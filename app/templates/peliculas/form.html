@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% from "peliculas/_case.html" import share_picker %}
+{% block title %}Melomano — Nueva película{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto">
+    <a href="/peliculas" class="text-sm text-ink-400 hover:text-ink-700">← Volver</a>
+    <h1 class="font-serif text-3xl font-700 text-ink-800 tracking-tight mt-2 mb-6">Nueva película</h1>
+
+    <form action="/peliculas/nueva" method="POST" enctype="multipart/form-data"
+        class="bg-cream-50 border border-cream-200 rounded-2xl p-6 space-y-5">
+
+        {% if tmdb_enabled %}
+        <!-- Búsqueda TMDB -->
+        <div id="searchBlock">
+            <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Buscar película</label>
+            <input id="q" type="text" placeholder="ej: El Padrino" autocomplete="off"
+                class="w-full bg-white border border-cream-200 rounded-xl px-4 py-3 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+            <div id="results" class="mt-2 space-y-1"></div>
+        </div>
+
+        <!-- Película elegida -->
+        <div id="picked" class="hidden flex items-center gap-3 bg-white border border-cream-200 rounded-xl p-3">
+            <img id="pickedPoster" class="w-12 h-[72px] object-cover rounded bg-cream-200" />
+            <div class="flex-1">
+                <p id="pickedTitle" class="text-sm font-600 text-ink-800"></p>
+                <p id="pickedYear" class="text-xs text-ink-400"></p>
+            </div>
+            <button type="button" onclick="unpick()" class="text-xs text-ink-400 hover:text-ink-700">Cambiar</button>
+        </div>
+        <input type="hidden" name="tmdb_id" id="tmdb_id" />
+
+        <!-- Elegir portada -->
+        <div id="postersBlock" class="hidden">
+            <label class="block text-xs uppercase tracking-widest text-ink-400 mb-2">Elegí la portada</label>
+            <div id="posters" class="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-80 overflow-y-auto pr-1"></div>
+        </div>
+
+        <button type="button" id="manualToggle" onclick="showManual()" class="text-xs text-ink-400 hover:text-ink-700 underline">
+            ¿No la encontrás? Cargala a mano
+        </button>
+        {% else %}
+        <p class="text-xs text-ink-400 bg-cream-100 rounded-lg px-3 py-2">
+            La búsqueda automática no está configurada (falta <code>TMDB_API_KEY</code>). Cargala a mano.
+        </p>
+        {% endif %}
+
+        <!-- Carga manual -->
+        <div id="manual" class="{% if tmdb_enabled %}hidden{% endif %} space-y-4">
+            <div>
+                <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Título *</label>
+                <input type="text" name="title" id="title" {% if not tmdb_enabled %}required{% endif %}
+                    class="w-full bg-white border border-cream-200 rounded-xl px-4 py-3 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+            </div>
+            <div class="grid grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Año</label>
+                    <input type="number" name="year" min="1880" max="2100"
+                        class="w-full bg-white border border-cream-200 rounded-xl px-4 py-3 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">URL de portada</label>
+                    <input type="url" name="poster_url" id="poster_url" placeholder="https://..."
+                        class="w-full bg-white border border-cream-200 rounded-xl px-4 py-3 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400" />
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Formato *</label>
+            <select name="format_type"
+                class="w-full bg-white border border-cream-200 rounded-xl px-4 py-3 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400">
+                {% for key, label in formats.items() %}
+                <option value="{{ key }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Foto de tu edición</label>
+            <input type="file" name="photo" accept="image/*" class="text-sm text-ink-500" />
+            <p class="text-xs text-ink-300 mt-1">Opcional: una foto de tu caja, para tener la versión exacta.</p>
+        </div>
+
+        {% if other_users %}{{ share_picker(other_users) }}{% endif %}
+
+        <div>
+            <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Notas</label>
+            <textarea name="notes" rows="3" placeholder="ej: edición especial 2 discos, región 4, steelbook..."
+                class="w-full bg-white border border-cream-200 rounded-xl px-4 py-3 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400"></textarea>
+        </div>
+
+        <button type="submit" class="w-full bg-ink-800 hover:bg-ink-700 text-cream-50 text-sm py-3 rounded-xl transition-all">
+            Guardar
+        </button>
+    </form>
+</div>
+
+{% if tmdb_enabled %}
+<script>
+const q = document.getElementById('q');
+const results = document.getElementById('results');
+let timer;
+
+q.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(search, 350);
+});
+
+async function search() {
+    const term = q.value.trim();
+    if (term.length < 2) { results.innerHTML = ''; return; }
+    const resp = await fetch('/peliculas/buscar?q=' + encodeURIComponent(term));
+    const data = await resp.json();
+    results.innerHTML = '';
+    if (!data.results.length) {
+        results.innerHTML = `<p class="text-xs text-ink-400 px-1">${data.error || 'Sin resultados'}</p>`;
+        return;
+    }
+    for (const r of data.results) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'w-full flex items-center gap-3 p-2 rounded-xl hover:bg-cream-200 text-left transition-all';
+        btn.innerHTML = `
+            ${r.poster_url ? `<img src="${r.poster_url}" class="w-8 h-12 object-cover rounded bg-cream-200">`
+                           : '<div class="w-8 h-12 rounded bg-cream-200 flex items-center justify-center">🎬</div>'}
+            <span class="text-sm text-ink-800"></span>
+            <span class="text-xs text-ink-400 ml-auto">${r.year || ''}</span>`;
+        btn.querySelector('span').textContent = r.title;
+        btn.onclick = () => pick(r);
+        results.appendChild(btn);
+    }
+}
+
+function pick(r) {
+    document.getElementById('tmdb_id').value = r.tmdb_id;
+    document.getElementById('pickedTitle').textContent = r.title;
+    document.getElementById('pickedYear').textContent = r.year || '';
+    document.getElementById('pickedPoster').src = r.poster_url || '';
+    document.getElementById('picked').classList.remove('hidden');
+    document.getElementById('searchBlock').classList.add('hidden');
+    document.getElementById('manualToggle').classList.add('hidden');
+    loadPosters(r.tmdb_id);
+}
+
+async function loadPosters(tmdbId) {
+    const grid = document.getElementById('posters');
+    grid.innerHTML = '<p class="col-span-full text-xs text-ink-400">Cargando portadas...</p>';
+    document.getElementById('postersBlock').classList.remove('hidden');
+    const data = await (await fetch('/peliculas/portadas/' + tmdbId)).json();
+    grid.innerHTML = '';
+    if (!data.posters.length) {
+        grid.innerHTML = '<p class="col-span-full text-xs text-ink-400">No hay portadas alternativas.</p>';
+        return;
+    }
+    for (const p of data.posters) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'poster-opt relative rounded-lg overflow-hidden ring-2 ring-transparent hover:ring-cream-400 transition-all';
+        btn.innerHTML = `<img src="${p.thumb}" loading="lazy" class="w-full aspect-[2/3] object-cover bg-cream-200">
+            ${p.language ? `<span class="absolute bottom-1 right-1 text-[9px] uppercase bg-black/60 text-white px-1 rounded">${p.language}</span>` : ''}`;
+        btn.onclick = () => {
+            document.querySelectorAll('.poster-opt').forEach(b => b.classList.replace('ring-ink-800', 'ring-transparent'));
+            btn.classList.replace('ring-transparent', 'ring-ink-800');
+            document.getElementById('poster_url').value = p.url;
+            document.getElementById('pickedPoster').src = p.thumb;
+        };
+        grid.appendChild(btn);
+    }
+}
+
+function unpick() {
+    document.getElementById('tmdb_id').value = '';
+    document.getElementById('poster_url').value = '';
+    document.getElementById('postersBlock').classList.add('hidden');
+    document.getElementById('picked').classList.add('hidden');
+    document.getElementById('searchBlock').classList.remove('hidden');
+    document.getElementById('manualToggle').classList.remove('hidden');
+    q.focus();
+}
+
+function showManual() {
+    document.getElementById('manual').classList.remove('hidden');
+    document.getElementById('title').required = true;
+}
+
+// Sin película elegida ni título manual, no dejar enviar
+document.querySelector('form').addEventListener('submit', e => {
+    if (!document.getElementById('tmdb_id').value && !document.getElementById('title').value.trim()) {
+        e.preventDefault();
+        alert('Buscá una película o cargala a mano.');
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

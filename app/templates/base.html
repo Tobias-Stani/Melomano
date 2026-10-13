@@ -92,6 +92,7 @@
                     ('/bateas',   'Bateas',     '/bateas' in request.url.path),
                     ('/wishlist', 'Wishlist',   '/wishlist' in request.url.path),
                     ('/setlist',  'Setlist',    '/setlist'  in request.url.path),
+                    ('/peliculas', 'Películas', '/peliculas' in request.url.path),
                 ] %}
                 {% for href, label, active in nav_links %}
                 <a href="{{ href }}" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all
@@ -188,6 +189,10 @@
             <a href="/setlist" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all
                 {% if '/setlist' in request.url.path %}bg-cream-200 text-ink-800{% else %}text-ink-500 hover:bg-cream-200{% endif %}">
                 🎛️ Setlist
+            </a>
+            <a href="/peliculas" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all
+                {% if '/peliculas' in request.url.path %}bg-cream-200 text-ink-800{% else %}text-ink-500 hover:bg-cream-200{% endif %}">
+                🎬 Películas
             </a>
             {% if user %}
             <div class="pt-1.5 mt-1.5 border-t border-cream-200 space-y-1">

@@ -1,0 +1,72 @@
+{# Caja 3D. full=True agrega el dorso (solo se ve en el detalle). #}
+{% macro case3d(m, formats, full=False) %}
+{% set is_bluray = m.format_type in ('bluray', 'bluray_bootleg') %}
+{% set is_bootleg = m.format_type.endswith('_bootleg') %}
+{% set cover = m.poster_url or m.edition_photo %}
+{% set band_label = ('Blu-ray' if is_bluray else 'DVD') if is_bootleg else ('Blu-ray Disc' if is_bluray else 'DVD VIDEO') %}
+
+<div class="case3d fmt-{{ m.format_type }}" data-case3d>
+    <div class="face f-front">
+        <div class="sleeve">
+            <div class="band">{% if is_bluray and not is_bootleg %}<span class="disc"></span>{% endif %}{{ band_label }}</div>
+            {% if cover %}
+            <img src="{{ cover }}" alt="{{ m.title }}" loading="lazy" draggable="false" />
+            {% else %}
+            <div class="no-cover">{{ m.title }}</div>
+            {% endif %}
+        </div>
+        {% if is_bootleg %}<span class="sticker">Bootleg</span>{% endif %}
+    </div>
+
+    <div class="face f-spine">
+        <div class="sleeve">
+            <div class="band">{{ 'BD' if is_bluray else 'DVD' }}</div>
+            <div class="spine-title"><span>{{ m.title }}</span><span>{{ m.year or '' }}</span></div>
+        </div>
+    </div>
+
+    {% if full %}
+    <div class="face f-back">
+        <div class="sleeve">
+            <div class="band">{{ band_label }}</div>
+            <div class="back-body">
+                {% if m.backdrop_url %}<img src="{{ m.backdrop_url }}" alt="" draggable="false" />{% endif %}
+                <div class="synopsis">{{ m.overview or m.notes or '' }}</div>
+                <div class="credits">
+                    {% if m.director %}Dirigida por {{ m.director }}{% endif %}
+                    {% if m.runtime %} · {{ m.runtime }} min{% endif %}
+                    {% if m.year %} · {{ m.year }}{% endif %}
+                </div>
+                <div class="back-foot">
+                    <div class="credits">{{ formats[m.format_type] }}</div>
+                    <div class="barcode"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="face f-edge"></div>
+    <div class="face f-top"></div>
+    <div class="face f-bottom"></div>
+</div>
+{% endmacro %}
+
+{# Checkboxes "Compartir con" (alta y edición) #}
+{% macro share_picker(users, selected=[]) %}
+<div>
+    <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Compartir con</label>
+    <div class="flex flex-wrap gap-2">
+        {% for u in users %}
+        <label class="cursor-pointer">
+            <input type="checkbox" name="share_with" value="{{ u.id }}" class="peer sr-only" {% if u in selected %}checked{% endif %} />
+            <span class="inline-block px-3 py-1.5 rounded-full text-xs border border-cream-200 text-ink-500 transition-all
+                peer-checked:bg-ink-800 peer-checked:text-cream-50 peer-checked:border-transparent peer-focus-visible:ring-2 peer-focus-visible:ring-cream-400">
+                {{ u.display_name or u.username }}
+            </span>
+        </label>
+        {% endfor %}
+    </div>
+    <p class="text-xs text-ink-300 mt-1">Aparece en la colección de cada uno y la pueden editar.</p>
+</div>
+{% endmacro %}

@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% from "peliculas/_case.html" import case3d, share_picker %}
+{% block title %}Melomano — {{ movie.title }}{% endblock %}
+
+{% block head %}
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Permanent+Marker&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/case3d.css">
+{% endblock %}
+
+{% block content %}
+<a href="{% if is_own %}/peliculas{% else %}/peliculas?u={{ owner.username|urlencode }}{% endif %}" class="text-sm text-ink-400 hover:text-ink-700">
+    ← {% if is_own %}Mis películas{% else %}Películas de {{ owner.display_name or owner.username }}{% endif %}
+</a>
+
+<!-- Escenario: la caja en 3D sobre el backdrop -->
+<div class="relative mt-3 rounded-2xl overflow-hidden" style="background:#0d0d10">
+    {% if movie.backdrop_url %}
+    <img src="{{ movie.backdrop_url }}" alt="" class="absolute inset-0 w-full h-full object-cover"
+        style="opacity:.28; filter:blur(6px) saturate(1.2); transform:scale(1.08)" />
+    {% endif %}
+    <div class="absolute inset-0" style="background:radial-gradient(ellipse at 30% 50%, transparent 0%, rgba(13,13,16,.85) 75%)"></div>
+
+    <div class="relative grid lg:grid-cols-[1.1fr_1fr] items-center gap-2 p-4 sm:p-8">
+        <div>
+            <div class="case-stage" tabindex="0" aria-label="Caja de {{ movie.title }}: arrastrá o usá las flechas para girarla">
+                {{ case3d(movie, formats, full=True) }}
+                <div class="floor"></div>
+            </div>
+            <div class="flex items-center justify-center gap-1.5 -mt-2">
+                {% for label, deg in [('Frente', 0), ('Lomo', 90), ('Dorso', 180)] %}
+                <button type="button" data-view="{{ deg }}"
+                    class="px-3 py-1 rounded-full text-xs transition-all"
+                    style="color:#e9e4da; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14)"
+                    onmouseover="this.style.background='rgba(255,255,255,.18)'" onmouseout="this.style.background='rgba(255,255,255,.08)'">{{ label }}</button>
+                {% endfor %}
+            </div>
+            <p class="text-center text-[11px] mt-2" style="color:rgba(233,228,218,.45)">Arrastrá para girarla · doble click la da vuelta</p>
+        </div>
+
+        <div class="min-w-0 pb-4 lg:pb-0" style="color:#fdfaf5">
+            <span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-600" style="background:rgba(255,255,255,.15)">{{ formats[movie.format_type] }}</span>
+            <h1 class="font-serif text-3xl sm:text-4xl font-700 tracking-tight mt-2">{{ movie.title }}</h1>
+            {% if movie.original_title and movie.original_title != movie.title %}
+            <p class="text-sm opacity-70 italic">{{ movie.original_title }}</p>
+            {% endif %}
+            <p class="text-sm opacity-80 mt-2">
+                {{ movie.year or '' }}
+                {% if movie.runtime %} · {{ movie.runtime // 60 }}h {{ movie.runtime % 60 }}m{% endif %}
+                {% if movie.genres %} · {{ movie.genres }}{% endif %}
+            </p>
+            {% if movie.director %}
+            <p class="text-sm mt-1"><span class="opacity-60">Dirección:</span> {{ movie.director }}</p>
+            {% endif %}
+            {% if movie.overview %}
+            <p class="text-sm leading-relaxed opacity-90 mt-4 max-w-2xl">{{ movie.overview }}</p>
+            {% endif %}
+            {% if movie.shared_with %}
+            <p class="text-xs mt-4" style="color:rgba(233,228,218,.65)">
+                👥 De {{ owner.display_name or owner.username }}{% for u in movie.shared_with %}{{ ' y ' if loop.last else ', ' }}{{ u.display_name or u.username }}{% endfor %}
+            </p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="grid md:grid-cols-2 gap-6 mt-6">
+    <!-- Mi edición -->
+    <div class="bg-cream-50 border border-cream-200 rounded-2xl p-6">
+        <h2 class="font-serif text-xl font-700 text-ink-800 mb-4">
+            {% if is_own %}Mi edición{% else %}Edición de {{ owner.display_name or owner.username }}{% endif %}
+        </h2>
+        {% if movie.edition_photo %}
+        <a href="{{ movie.edition_photo }}" target="_blank">
+            <img src="{{ movie.edition_photo }}" alt="Foto de la edición" class="rounded-xl max-h-80 object-contain bg-cream-200 mb-4" />
+        </a>
+        {% endif %}
+        {% if movie.notes %}
+        <p class="text-sm text-ink-600 whitespace-pre-line">{{ movie.notes }}</p>
+        {% elif not movie.edition_photo %}
+        <p class="text-sm text-ink-400">Sin foto ni notas de la edición.</p>
+        {% endif %}
+        {% if movie.tmdb_id %}
+        <a href="https://www.themoviedb.org/movie/{{ movie.tmdb_id }}" target="_blank"
+            class="inline-block mt-4 text-xs text-ink-400 hover:text-ink-700 underline">Ver en TMDB ↗</a>
+        {% endif %}
+    </div>
+
+    {% if is_own %}
+    <!-- Editar -->
+    <div class="bg-cream-50 border border-cream-200 rounded-2xl p-6">
+        <h2 class="font-serif text-xl font-700 text-ink-800 mb-4">Editar</h2>
+        <form action="/peliculas/{{ movie.id }}/editar" method="POST" enctype="multipart/form-data" class="space-y-4">
+            <div>
+                <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Formato</label>
+                <select name="format_type"
+                    class="w-full bg-white border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400">
+                    {% for key, label in formats.items() %}
+                    <option value="{{ key }}" {% if movie.format_type == key %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% if movie.tmdb_id %}
+            <div>
+                <input type="hidden" name="poster_url" id="poster_url" />
+                <button type="button" id="postersBtn" onclick="loadPosters()"
+                    class="text-sm text-ink-500 hover:text-ink-800 underline">🖼️ Cambiar portada</button>
+                <div id="posters" class="hidden grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-72 overflow-y-auto pr-1 mt-2"></div>
+            </div>
+            {% endif %}
+            <div>
+                <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">
+                    {% if movie.edition_photo %}Reemplazar foto{% else %}Foto de tu edición{% endif %}
+                </label>
+                <input type="file" name="photo" accept="image/*" class="text-sm text-ink-500" />
+            </div>
+            {% if is_owner and other_users %}{{ share_picker(other_users, movie.shared_with) }}{% endif %}
+            <div>
+                <label class="block text-xs uppercase tracking-widest text-ink-400 mb-1">Notas</label>
+                <textarea name="notes" rows="3"
+                    class="w-full bg-white border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-cream-400">{{ movie.notes or '' }}</textarea>
+            </div>
+            <div class="flex items-center justify-between">
+                <button type="submit" class="px-4 py-2 bg-ink-800 text-cream-50 rounded-xl text-sm hover:bg-ink-700 transition-all">Guardar</button>
+                <button type="submit" formaction="/peliculas/{{ movie.id }}/eliminar"
+                    {% if is_owner %}
+                    onclick='return confirm({{ ("¿Eliminar " ~ movie.title ~ "? Se borra también para con quienes la compartís.")|tojson }})'
+                    class="text-sm text-red-500 hover:text-red-700">Eliminar</button>
+                    {% else %}
+                    onclick='return confirm({{ ("¿Sacar " ~ movie.title ~ " de tu colección?")|tojson }})'
+                    class="text-sm text-red-500 hover:text-red-700">Sacar de mi colección</button>
+                    {% endif %}
+            </div>
+        </form>
+    </div>
+    {% endif %}
+</div>
+
+<script src="/static/js/case3d.js"></script>
+
+{% if is_own and movie.tmdb_id %}
+<script>
+async function loadPosters() {
+    const grid = document.getElementById('posters');
+    grid.classList.remove('hidden');
+    document.getElementById('postersBtn').classList.add('hidden');
+    grid.innerHTML = '<p class="col-span-full text-xs text-ink-400">Cargando portadas...</p>';
+    const data = await (await fetch('/peliculas/portadas/{{ movie.tmdb_id }}')).json();
+    grid.innerHTML = data.posters.length ? '' : '<p class="col-span-full text-xs text-ink-400">No hay portadas alternativas.</p>';
+    for (const p of data.posters) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'poster-opt relative rounded-lg overflow-hidden ring-2 ring-transparent hover:ring-cream-400 transition-all';
+        btn.innerHTML = `<img src="${p.thumb}" loading="lazy" class="w-full aspect-[2/3] object-cover bg-cream-200">
+            ${p.language ? `<span class="absolute bottom-1 right-1 text-[9px] uppercase bg-black/60 text-white px-1 rounded">${p.language}</span>` : ''}`;
+        btn.onclick = () => {
+            document.querySelectorAll('.poster-opt').forEach(b => b.classList.replace('ring-ink-800', 'ring-transparent'));
+            btn.classList.replace('ring-transparent', 'ring-ink-800');
+            document.getElementById('poster_url').value = p.url;
+        };
+        grid.appendChild(btn);
+    }
+}
+</script>
+{% endif %}
+
+{% if movie.tmdb_id %}
+<p class="text-[11px] text-ink-300 mt-8 text-center">Datos e imágenes de TMDB. Este producto usa la API de TMDB pero no está avalado ni certificado por TMDB.</p>
+{% endif %}
+{% endblock %}

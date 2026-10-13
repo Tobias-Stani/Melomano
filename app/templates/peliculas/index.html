@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Melomano — Películas{% endblock %}
+
+{% from "peliculas/_case.html" import case3d %}
+
+{% block head %}
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Permanent+Marker&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/case3d.css">
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div>
+        <h1 class="font-serif text-3xl font-700 text-ink-800 tracking-tight">
+            {% if is_own %}Mis películas{% else %}Películas de {{ target.display_name or target.username }}{% endif %}
+        </h1>
+        <p class="text-ink-400 text-sm mt-1">{{ movies|length }} películas</p>
+    </div>
+    <div class="flex items-center gap-2">
+        <select onchange="location.href='/peliculas?u=' + encodeURIComponent(this.value)"
+            class="bg-white border border-cream-200 rounded-xl px-3 py-2 text-sm text-ink-600 focus:outline-none focus:ring-2 focus:ring-cream-400">
+            {% for u in users %}
+            <option value="{{ u.username }}" {% if u.id == target.id %}selected{% endif %}>
+                {{ u.display_name or u.username }}{% if u.username == user %} (yo){% endif %}
+            </option>
+            {% endfor %}
+        </select>
+        <button onclick="copyLink(this)"
+            class="px-3 py-2 border border-cream-200 rounded-xl text-sm text-ink-500 hover:bg-cream-200 transition-all"
+            title="Copiar link para compartir">🔗 Compartir</button>
+        {% if is_own %}
+        <a href="/peliculas/nueva" class="px-4 py-2 bg-ink-800 text-cream-50 rounded-xl text-sm hover:bg-ink-700 transition-all">
+            + Nueva película
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Filtro por formato -->
+<div class="flex flex-wrap gap-2 mb-8">
+    {% set base_url = '/peliculas?u=' ~ (target.username|urlencode) %}
+    <a href="{{ base_url }}" class="px-3 py-1 rounded-full text-xs font-medium transition-all
+        {% if not f %}bg-ink-800 text-cream-50{% else %}bg-cream-200 text-ink-500 hover:bg-cream-300{% endif %}">Todas</a>
+    {% for key, label in formats.items() %}
+    <a href="{{ base_url }}&f={{ key }}" class="px-3 py-1 rounded-full text-xs font-medium transition-all
+        {% if f == key %}bg-ink-800 text-cream-50{% else %}bg-cream-200 text-ink-500 hover:bg-cream-300{% endif %}">{{ label }}</a>
+    {% endfor %}
+</div>
+
+{% if movies %}
+<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-8 gap-y-10 items-end">
+    {% for m in movies %}
+    <a href="/peliculas/{{ m.id }}" class="case-shelf-item block">
+        {{ case3d(m, formats) }}
+        <p class="mt-4 text-sm font-600 text-ink-800 line-clamp-1">{{ m.title }}</p>
+        <p class="text-xs text-ink-400">{{ m.year or '' }}{% if m.director %} · {{ m.director }}{% endif %}</p>
+        {% if m.shared_with %}
+        <p class="text-xs text-ink-400 mt-0.5 line-clamp-1">👥 con
+            {% for u in [m.owner] + m.shared_with if u.id != target.id %}{{ u.display_name or u.username }}{{ ', ' if not loop.last }}{% endfor %}
+        </p>
+        {% endif %}
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-20 text-ink-400">
+    <p class="text-5xl mb-4">🎬</p>
+    <p class="text-sm">{% if is_own %}Todavía no cargaste películas.{% else %}No hay películas acá.{% endif %}</p>
+</div>
+{% endif %}
+
+<script>
+function copyLink(btn) {
+    const url = `${location.origin}/peliculas?u={{ target.username|urlencode }}`;
+    navigator.clipboard.writeText(url).then(() => {
+        const prev = btn.textContent;
+        btn.textContent = '✓ Copiado';
+        setTimeout(() => btn.textContent = prev, 1500);
+    });
+}
+</script>
+{% endblock %}

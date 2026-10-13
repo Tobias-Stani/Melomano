@@ -1,0 +1,216 @@
+/* ── Caja 3D de película (DVD / Blu-ray / bootleg) ──────────────
+   Proporciones reales: Blu-ray 135×171×12mm, DVD 135×190×14mm.
+   Tamaño controlado con --w; alto y espesor salen de ahí. */
+
+.case3d {
+    --w: 260px;
+    --h: calc(var(--w) * 1.267);
+    --d: calc(var(--w) * .089);
+    --plastic: #1b5bb5;
+    --plastic-edge: #123f80;
+    --band: #1b5bb5;
+    --sleeve-filter: none;
+    position: relative;
+    width: var(--w);
+    height: var(--h);
+    transform-style: preserve-3d;
+    font-family: 'Oswald', 'Inter', sans-serif;
+}
+.case3d.fmt-dvd, .case3d.fmt-dvd_bootleg {
+    --h: calc(var(--w) * 1.407);
+    --d: calc(var(--w) * .104);
+    --plastic: #151515;
+    --plastic-edge: #050505;
+    --band: #151515;
+}
+.case3d.fmt-dvd_bootleg, .case3d.fmt-bluray_bootleg {
+    --plastic: rgba(225, 231, 236, .55);
+    --plastic-edge: rgba(190, 198, 205, .8);
+    --sleeve-filter: grayscale(.35) contrast(1.15) sepia(.18);
+}
+
+.case3d .face {
+    position: absolute;
+    backface-visibility: hidden;
+    overflow: hidden;
+    background: var(--plastic);
+}
+.case3d .f-front, .case3d .f-back { width: var(--w); height: var(--h); }
+.case3d .f-front { transform: translateZ(calc(var(--d) / 2)); }
+.case3d .f-back  { transform: rotateY(180deg) translateZ(calc(var(--d) / 2)); }
+.case3d .f-spine, .case3d .f-edge {
+    width: var(--d); height: var(--h);
+    left: calc((var(--w) - var(--d)) / 2);
+}
+.case3d .f-spine { transform: rotateY(-90deg) translateZ(calc(var(--w) / 2)); }
+.case3d .f-edge  {
+    transform: rotateY(90deg) translateZ(calc(var(--w) / 2));
+    background: repeating-linear-gradient(0deg, var(--plastic) 0 3px, var(--plastic-edge) 3px 4px);
+}
+.case3d .f-top, .case3d .f-bottom {
+    width: var(--w); height: var(--d);
+    top: calc((var(--h) - var(--d)) / 2);
+    background: var(--plastic-edge);
+}
+.case3d .f-top    { transform: rotateX(90deg)  translateZ(calc(var(--h) / 2)); }
+.case3d .f-bottom { transform: rotateX(-90deg) translateZ(calc(var(--h) / 2)); }
+
+/* Papel (sleeve) debajo del plástico */
+.case3d .sleeve {
+    position: absolute;
+    inset: calc(var(--w) * .022);
+    display: flex;
+    flex-direction: column;
+    background: #0e0e10;
+    color: #f4f1ea;
+    filter: var(--sleeve-filter);
+}
+.case3d .f-spine .sleeve { inset: calc(var(--w) * .022) 1px; }
+.case3d .sleeve img { display: block; width: 100%; object-fit: cover; }
+.case3d .f-front .sleeve img { flex: 1; min-height: 0; }
+
+/* Brillo del plástico: se mueve con el giro (--rot lo setea el JS) */
+.case3d .f-front::after, .case3d .f-back::after, .case3d .f-spine::after {
+    content: '';
+    position: absolute; inset: 0;
+    pointer-events: none;
+    background: linear-gradient(115deg,
+        rgba(255,255,255,.28) 0%, rgba(255,255,255,0) 28%,
+        rgba(255,255,255,0) 58%, rgba(255,255,255,.10) 66%, rgba(255,255,255,0) 76%);
+    background-size: 220% 100%;
+    background-position: calc(50% + var(--rot, 0) * 1%) 0;
+}
+
+/* Banda superior tipo Blu-ray */
+.case3d .band {
+    flex: none;
+    height: calc(var(--w) * .085);
+    display: flex; align-items: center; justify-content: center; gap: .35em;
+    background: var(--band);
+    color: #fff;
+    font-size: calc(var(--w) * .05);
+    font-weight: 600;
+    letter-spacing: .04em;
+    font-style: italic;
+}
+.case3d .band .disc {
+    width: 1em; height: 1em; border-radius: 50%;
+    background: radial-gradient(circle, transparent 18%, #fff 20% 30%, #cfd8e6 32% 100%);
+}
+.case3d.fmt-dvd .band, .case3d.fmt-dvd_bootleg .band { font-style: normal; letter-spacing: .18em; }
+.case3d.fmt-dvd_bootleg .band, .case3d.fmt-bluray_bootleg .band {
+    background: #f4f1ea; color: #222;
+    font-family: 'Permanent Marker', cursive; font-style: normal; letter-spacing: .02em;
+}
+
+/* Portada sin imagen */
+.case3d .no-cover {
+    flex: 1;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 10%;
+    background: linear-gradient(160deg, #2a2a30, #0e0e10);
+    font-size: calc(var(--w) * .1);
+    line-height: 1.05;
+    text-transform: uppercase;
+}
+
+/* Lomo */
+.case3d .spine-title {
+    flex: 1;
+    writing-mode: vertical-rl;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8% 0;
+    font-size: calc(var(--d) * .5);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    white-space: nowrap;
+    overflow: hidden;
+}
+.case3d .spine-title span:first-child { overflow: hidden; text-overflow: ellipsis; }
+.case3d .spine-title span:last-child  { opacity: .6; font-size: .8em; }
+.case3d .f-spine .band { height: calc(var(--d) * 1.1); font-size: calc(var(--d) * .35); }
+
+/* Dorso */
+.case3d .back-body {
+    flex: 1; min-height: 0;
+    display: flex; flex-direction: column; gap: .6em;
+    padding: 7% 8%;
+    font-family: 'Inter', sans-serif;
+    font-size: calc(var(--w) * .036);
+    line-height: 1.45;
+}
+.case3d .back-body img { height: 34%; flex: none; border-radius: 2px; }
+.case3d .back-body .synopsis { flex: 1; min-height: 0; overflow: hidden; opacity: .9;
+    -webkit-mask-image: linear-gradient(#000 80%, transparent); mask-image: linear-gradient(#000 80%, transparent); }
+.case3d .back-body .credits { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: .05em; opacity: .7; font-size: .85em; }
+.case3d .back-foot { display: flex; align-items: flex-end; justify-content: space-between; }
+.case3d .barcode {
+    width: 34%; height: calc(var(--w) * .1);
+    background: #fff;
+    background-image: repeating-linear-gradient(90deg, #000 0 1px, transparent 1px 3px, #000 3px 5px, transparent 5px 6px, #000 6px 7px, transparent 7px 10px);
+    background-clip: content-box;
+    padding: 4px 5px;
+}
+
+/* Sticker bootleg */
+.case3d .sticker {
+    position: absolute;
+    right: 6%; bottom: 7%;
+    padding: .25em .6em;
+    transform: rotate(-9deg);
+    background: #ffe94d;
+    color: #c4161c;
+    font-family: 'Permanent Marker', cursive;
+    font-size: calc(var(--w) * .07);
+    box-shadow: 0 2px 6px rgba(0,0,0,.35);
+    z-index: 2;
+}
+.case3d .sticker::before {
+    content: '';
+    position: absolute; left: 50%; top: -.45em;
+    width: 2.2em; height: .9em;
+    transform: translateX(-50%) rotate(4deg);
+    background: rgba(255,255,255,.55);
+}
+
+/* ── Escenario del detalle ─────────────────────────────────── */
+.case-stage {
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    min-height: 520px;
+    perspective: 1400px;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    outline: none;
+}
+.case-stage:active { cursor: grabbing; }
+.case-stage:focus-visible { box-shadow: inset 0 0 0 2px rgba(255,255,255,.5); border-radius: 1rem; }
+.case-stage .case3d.snap { transition: transform .7s cubic-bezier(.2, .8, .2, 1); }
+.case-stage .floor {
+    position: absolute; bottom: 28px; left: 50%;
+    width: 300px; height: 40px;
+    transform: translateX(-50%);
+    background: radial-gradient(ellipse, rgba(0,0,0,.55), transparent 70%);
+    pointer-events: none;
+}
+
+/* ── Estante del listado ───────────────────────────────────── */
+.case-shelf-item { container-type: inline-size; perspective: 900px; }
+.case-shelf-item .case3d {
+    --w: 100cqw;
+    margin: 0 auto;
+    transform: rotateY(22deg) rotateX(2deg);
+    transition: transform .45s cubic-bezier(.2, .8, .2, 1);
+}
+.case-shelf-item:hover .case3d,
+.case-shelf-item:focus-visible .case3d { transform: rotateY(-8deg) rotateX(4deg) translateZ(30px); }
+
+@media (prefers-reduced-motion: reduce) {
+    .case-shelf-item .case3d, .case-stage .case3d.snap { transition: none; }
+}
+
+@media (max-width: 480px) {
+    .case-stage { min-height: 420px; }
+    .case-stage .case3d { --w: 200px; }
+}
